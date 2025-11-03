@@ -1,4 +1,5 @@
-
+import { Footer } from "@/components/local/shared";
+import Header from "@/components/local/shared/Header";
 
 export default function RootLayout({
   children,
@@ -6,8 +7,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <div>
-        {children}
+    <div className="">
+      <Header />
+      <main className="min-h-screen">{children}</main>
+      <Footer />
     </div>
   );
 }

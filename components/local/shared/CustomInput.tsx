@@ -146,7 +146,7 @@ const CustomInput = React.forwardRef<HTMLInputElement, CustomInputProps>(
       if (!button) return null
 
       return (
-        <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
+        <div className="absolute right-1 top-1/2 transform -translate-y-1/2">
           <CustomButton
             size={button.size || "sm"}
             variant={button.variant || "default"}

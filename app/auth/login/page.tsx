@@ -118,7 +118,7 @@ export default function Login() {
           />
 
           {/* Footer Links */}
-          <div className="mt-4 flex flex-col sm:flex-row justify-between items-center text-sm space-y-2 sm:space-y-0">
+          <div className="mt-4 flex flex-row justify-between items-center text-sm space-y-2 sm:space-y-0">
             <button
               type="button"
               className="text-gray-600 hover:text-gray-800 transition-colors"
