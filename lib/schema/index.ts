@@ -51,7 +51,20 @@ export const resetPasswordSchema = z.object({
     path: ["confirm_password"],
 });
 
+export const checkoutSchema = z.object({
+    firstName: z.string().min(1, 'First name is required'),
+    lastName: z.string().min(1, 'Last name is required'),
+    phoneNumber: z.string().min(10, 'Phone number must be at least 10 digits'),
+    email: z.string().email('Invalid email address'),
+    state: z.string().min(1, 'State is required'),
+    lga: z.string().min(1, 'Local Government Area is required'),
+    streetAddress: z.string().min(5, 'Street address is required'),
+    useSavedInfo: z.boolean().optional(),
+    paymentMethod: z.enum(['card', 'transfer']),
+});
 
+
+export type CheckoutCredentials = z.infer<typeof checkoutSchema>;
 export type ResetPasswordCredentials = z.infer<typeof resetPasswordSchema>;
 export type ForgotPasswordCredentials = z.infer<typeof forgotPasswordSchema>;
 

@@ -372,6 +372,48 @@ export const api = createApi({
         //     ],
         // }),
 
+        // Checkout with Paystack
+        checkout: builder.mutation<
+            { authorization_url: string, access_code: string, reference: string },
+            { 
+                firstName: string;
+                lastName: string;
+                phoneNumber: string;
+                email: string;
+                state: string;
+                lga: string;
+                streetAddress: string;
+                paymentMethod: string;
+                // Order details
+                items: Array<{
+                    name: string;
+                    price: number;
+                    quantity: number;
+                }>;
+                subtotal: number;
+                deliveryFee: number;
+                tax: number;
+                total: number;
+            }
+        >({
+            query: (data) => ({
+                url: "/orders/checkout",
+                method: "POST",
+                body: data,
+            }),
+            onQueryStarted: async (_arg, { queryFulfilled }) => {
+                try {
+                    const { data } = await queryFulfilled;
+                    // Redirect to Paystack authorization URL
+                    if (data.authorization_url) {
+                        window.location.href = data.authorization_url;
+                    }
+                } catch (error) {
+                    console.error("Checkout failed:", error);
+                }
+            },
+        }),
+
     }),
 });
 
@@ -386,6 +428,7 @@ export const {
     useGoogleMutation,
     useLogoutMutation,
     useGetUserQuery,
+    useCheckoutMutation,
     // useGetCategoriesQuery,
     // useGetCategoryByIdQuery,
     // useAddCategoryMutation,
