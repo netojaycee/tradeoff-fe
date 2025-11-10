@@ -1,76 +1,66 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
+import { User } from "@/lib/types";
 
-// Define a TypeScript interface for user data returned by your backend
-export interface User {
-  id: string;
-  full_name: string;
-  email: string;
-  first_name: string;
-  last_name: string;
-  role: "USER" | "ADMIN";
-  // created_at: Date;
-  // updated_at: Date;
-  profile_image?: string | null;
-  is_verified: boolean;
-  verification_code?: string | null;
-}
-
-interface UserState {
-  id: string;
-  full_name: string;
-  email: string;
-  first_name: string;
-  last_name: string;
-  role: "USER" | "ADMIN";
-  // created_at: string;
-  // updated_at: string;
-  profile_image?: string | null;
-  is_verified: boolean;
-  verification_code?: string | null;
+interface AuthState {
+  // User info
+  user: User | null;
+  
+  // Authentication tokens
+  accessToken: string | null;
+  refreshToken: string | null;
+  
+  // Auth status
   isAuthenticated: boolean;
+  isLoading: boolean;
 }
 
-const initialState: UserState = {
-  id: "",
-  full_name: "",
-  email: "",
-  first_name: "",
-  last_name: "",
-  role: "USER",
-  // created_at: new Date(),
-  // updated_at: new Date(),
-  profile_image: "",
-  is_verified: false,
-  verification_code: "",
+const initialState: AuthState = {
+  user: null,
+  accessToken: null,
+  refreshToken: null,
   isAuthenticated: false,
+  isLoading: false,
 };
 
-const userSlice = createSlice({
-  name: "user_tradeoff",
+const authSlice = createSlice({
+  name: "auth",
   initialState,
   reducers: {
     setUserInfo: (state, action: PayloadAction<User>) => {
-      state.id = action.payload.id;
-      state.email = action.payload.email;
-      state.first_name = action.payload.first_name;
-      state.last_name = action.payload.last_name;
-      state.full_name = `${action.payload.first_name} ${action.payload.last_name}`;
-      state.role = action.payload.role;
-      // state.created_at = action.payload.created_at;
-      // state.created_at = new Date(action.payload.created_at);
-      // state.updated_at = new Date(action.payload.updated_at);
-      state.profile_image = action.payload.profile_image;
-      state.is_verified = action.payload.is_verified ?? false;
-      state.verification_code = action.payload.verification_code || "";
+      state.user = action.payload;
       state.isAuthenticated = true;
     },
 
-    clearUserInfo: () => {
-      return { ...initialState };
+    setTokens: (state, action: PayloadAction<{ accessToken: string; refreshToken: string }>) => {
+      state.accessToken = action.payload.accessToken;
+      state.refreshToken = action.payload.refreshToken;
+      state.isAuthenticated = true;
+    },
+
+    clearUserInfo: (state) => {
+      state.user = null;
+      state.accessToken = null;
+      state.refreshToken = null;
+      state.isAuthenticated = false;
+      state.isLoading = false;
+    },
+
+    setLoading: (state, action: PayloadAction<boolean>) => {
+      state.isLoading = action.payload;
+    },
+
+    updateAccessToken: (state, action: PayloadAction<string>) => {
+      state.accessToken = action.payload;
     },
   },
 });
 
-export const { setUserInfo, clearUserInfo } = userSlice.actions;
+export const { 
+  setUserInfo, 
+  setTokens, 
+  clearUserInfo, 
+  setLoading, 
+  updateAccessToken 
+} = authSlice.actions;
 
-export default userSlice.reducer;
+export default authSlice.reducer;

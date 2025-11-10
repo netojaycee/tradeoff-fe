@@ -3,8 +3,8 @@
 import React, { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useVerifyMutation, useSendOTPMutation } from '@/redux/api'
-import { CustomButton, AuthLayout, OTPInput } from '@/components/local/shared'
+import { useVerifyEmailMutation, useResendVerificationMutation } from '@/redux/api'
+import { CustomButton, AuthLayout, OTPInput } from '@/components/local'
 import {
   Form,
   FormControl,
@@ -14,50 +14,58 @@ import {
 } from '@/components/ui/form'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { toast } from 'sonner'
-import { z } from 'zod'
+import { verifyEmailSchema, type VerifyEmailCredentials } from '@/lib/schema'
 import { cn } from '@/lib/utils'
-
-// Custom schema for OTP form
-const otpFormSchema = z.object({
-  code: z.string().length(6, 'Code must be 6 characters'),
-})
-
-type OTPFormData = z.infer<typeof otpFormSchema>
 
 export default function VerifyOTP() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const email = searchParams.get('email') || ''
-  const type = (searchParams.get('type') as 'register' | 'forgot-password') || 'register'
+  const emailFromQuery = searchParams.get('email')
+  const emailFromStorage = typeof window !== 'undefined' ? localStorage.getItem('verificationEmail') : null
+  const email = emailFromQuery || emailFromStorage || ''
   
   const [otpValue, setOtpValue] = useState('')
   const [countdown, setCountdown] = useState(60)
   const canResend = countdown === 0
   
   const [
-    verify,
+    verifyEmail,
     {
       isLoading: isLoadingVerify,
       isSuccess: isSuccessVerify,
       isError: isErrorVerify,
       error: errorVerify,
     },
-  ] = useVerifyMutation()
+  ] = useVerifyEmailMutation()
 
   const [
-    sendOTP,
+    resendVerification,
     {
       isLoading: isLoadingResend,
       isSuccess: isSuccessResend,
+      isError: isErrorResend,
+      error: errorResend,
     },
-  ] = useSendOTPMutation()
+  ] = useResendVerificationMutation()
 
-  const form = useForm<OTPFormData>({
-    resolver: zodResolver(otpFormSchema),
+  const form = useForm<VerifyEmailCredentials>({
+    resolver: zodResolver(verifyEmailSchema),
     defaultValues: {
+      email: email,
       code: '',
     },
   })
+
+  // Redirect if no email
+  useEffect(() => {
+    if (!email) {
+      toast.error('No email found. Please register first.')
+      router.push('/auth/register')
+    } else {
+      // Update form email when email changes
+      form.setValue('email', email)
+    }
+  }, [email, router, form])
 
   // Countdown timer for resend
   useEffect(() => {
@@ -73,88 +81,102 @@ export default function VerifyOTP() {
   // Handle verification results
   useEffect(() => {
     if (isSuccessVerify) {
-      toast.success('Verification Successful')
-      if (type === 'register') {
-        router.push('/auth/login')
-      } else {
-        router.push('/auth/reset-password')
+      toast.success('Email verified successfully! You can now log in.')
+      // Clear stored email
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('verificationEmail')
       }
-      return
+      router.push('/auth/login')
     }
     
     if (isErrorVerify) {
       if ('data' in errorVerify && typeof errorVerify.data === 'object') {
-        const errorMessage = (errorVerify.data as { error?: string })?.error
+        const errorMessage = (errorVerify.data as { message?: string })?.message
         toast.error(errorMessage || 'Verification failed')
       } else {
-        toast.error('Verification failed')
+        toast.error('Verification failed. Please try again.')
       }
-      // Use setTimeout to avoid effect setState warning
+      // Reset form
       setTimeout(() => {
         setOtpValue('')
         form.reset()
       }, 0)
     }
-  }, [isSuccessVerify, isErrorVerify, errorVerify, router, type, form])
+  }, [isSuccessVerify, isErrorVerify, errorVerify, router, form])
 
-  // Handle resend success
+  // Handle resend results
   useEffect(() => {
     if (isSuccessResend) {
-      toast.success('New code sent to your email')
-      // Use setTimeout to avoid effect setState warning
+      toast.success('New verification code sent to your email')
       setTimeout(() => {
         setCountdown(60)
       }, 0)
     }
-  }, [isSuccessResend])
+    
+    if (isErrorResend) {
+      if ('data' in errorResend && typeof errorResend.data === 'object') {
+        const errorMessage = (errorResend.data as { message?: string })?.message
+        toast.error(errorMessage || 'Failed to resend code')
+      } else {
+        toast.error('Failed to resend verification code')
+      }
+    }
+  }, [isSuccessResend, isErrorResend, errorResend])
 
-  const onSubmit = async (values: OTPFormData) => {
+  const onSubmit = async (values: VerifyEmailCredentials) => {
     try {
-      await verify({
-        email,
+      await verifyEmail({
+        // email: values.email,
         code: values.code,
       }).unwrap()
-    } catch (error) {
+      
+      // Success handling is done in useEffect
+    } catch (error: unknown) {
       console.error('Verify error:', error)
+      // Error handling is done in useEffect - no toast here to avoid duplicates
     }
   }
 
   const handleOTPComplete = (otp: string) => {
     form.setValue('code', otp)
-    onSubmit({ code: otp })
+    onSubmit({ email, code: otp })
   }
 
   const handleOTPChange = (otp: string) => {
     setOtpValue(otp)
     form.setValue('code', otp)
+    // Also update email in form
+    form.setValue('email', email)
   }
 
   const handleResend = async () => {
-    if (!canResend) return
+    if (!canResend || !email) return
     
     try {
-      await sendOTP({
-        email,
-        type,
-      }).unwrap()
-    } catch (error) {
+      const result = await resendVerification({ email }).unwrap()
+      
+      if (result.success) {
+        toast.success('New verification code sent to your email')
+        setCountdown(60)
+      } else {
+        toast.error(result.message || 'Failed to resend code')
+      }
+    } catch (error: unknown) {
       console.error('Resend error:', error)
-      toast.error('Failed to resend code')
+      
+      const errorObj = error as { data?: { message?: string }; message?: string }
+      toast.error(
+        errorObj.data?.message || 
+        errorObj.message || 
+        'Failed to resend verification code'
+      )
     }
-  }
-
-  const getTitle = () => {
-    return type === 'register' ? 'OTP Verification' : 'Reset Password'
-  }
-
-  const getSubtitle = () => {
-    return `We sent a 6-digit code to ${email} for verification purpose`
   }
 
   return (
     <AuthLayout
-      title={getTitle()}
-      subtitle={getSubtitle()}
+      title="Email Verification"
+      subtitle={`We sent a 6-digit code to ${email} for verification purpose`}
     >
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
@@ -185,10 +207,10 @@ export default function VerifyOTP() {
             <button
               type="button"
               onClick={handleResend}
-              disabled={!canResend || isLoadingResend}
+              disabled={!canResend || isLoadingResend || !email}
               className={cn(
                 "font-medium transition-colors",
-                canResend && !isLoadingResend
+                canResend && !isLoadingResend && email
                   ? "text-[#38BDF8] hover:text-[#2abdfc] cursor-pointer"
                   : "text-gray-400 cursor-not-allowed"
               )}
@@ -205,20 +227,30 @@ export default function VerifyOTP() {
             loading={isLoadingVerify}
             loadingText="Verifying..."
           >
-            Submit
+            Verify Email
           </CustomButton>
         </form>
       </Form>
 
       {/* Back to previous step */}
-      <div className="mt-6 text-center">
+      <div className="mt-6 text-center space-y-2">
         <button
           type="button"
-          onClick={() => router.back()}
-          className="text-gray-600 hover:text-gray-800 text-sm transition-colors"
+          onClick={() => router.push('/auth/login')}
+          className="text-gray-600 hover:text-gray-800 text-sm transition-colors block mx-auto"
         >
-          ← Back to previous step
+          ← Back to Login
         </button>
+        <div className="text-xs text-gray-500">
+          Don&apos;t have an account?{' '}
+          <button
+            type="button"
+            onClick={() => router.push('/auth/register')}
+            className="text-[#38BDF8] hover:text-[#2abdfc] font-medium transition-colors"
+          >
+            Sign up here
+          </button>
+        </div>
       </div>
     </AuthLayout>
   )

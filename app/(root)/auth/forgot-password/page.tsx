@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { Icon } from '@iconify/react'
 
-import { CustomButton, CustomInput, AuthLayout } from '@/components/local/shared'
+import { CustomButton, CustomInput, AuthLayout } from '@/components/local'
 import {
   Form,
   FormControl,
@@ -16,7 +16,7 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form'
-import { useSendOTPMutation } from '@/redux/api'
+import { useForgotPasswordMutation } from '@/redux/api'
 import { forgotPasswordSchema, type ForgotPasswordCredentials } from '@/lib/schema'
 
 export default function ForgotPasswordPage() {
@@ -24,14 +24,14 @@ export default function ForgotPasswordPage() {
   const [isSubmitted, setIsSubmitted] = useState(false)
   
   const [
-    sendOTP,
+    forgotPass,
     {
-      isLoading: isLoadingSendOTP,
-      isSuccess: isSuccessSendOTP,
-      isError: isErrorSendOTP,
-      error: errorSendOTP,
+      isLoading: isLoadingForgotPass,
+      isSuccess: isSuccessForgotPass,
+      isError: isErrorForgotPass,
+      error: errorForgotPass,
     },
-  ] = useSendOTPMutation()
+  ] = useForgotPasswordMutation()
 
   const form = useForm<ForgotPasswordCredentials>({
     resolver: zodResolver(forgotPasswordSchema),
@@ -42,10 +42,7 @@ export default function ForgotPasswordPage() {
 
   const onSubmit = async (values: ForgotPasswordCredentials) => {
     try {
-      await sendOTP({
-        email: values.email,
-        type: "forgot-password"
-      }).unwrap()
+      await forgotPass(values).unwrap()
       setIsSubmitted(true)
     } catch (error) {
       console.error('Send OTP error:', error)
@@ -53,21 +50,21 @@ export default function ForgotPasswordPage() {
   }
 
   useEffect(() => {
-    if (isSuccessSendOTP) {
+    if (isSuccessForgotPass) {
       toast.success('Reset code sent to your email!')
       // Navigate to reset password page with email in query
       setTimeout(() => {
         router.push(`/auth/reset-password?email=${encodeURIComponent(form.getValues('email'))}`)
       }, 1500)
-    } else if (isErrorSendOTP) {
-      if ('data' in errorSendOTP && typeof errorSendOTP.data === 'object') {
-        const errorMessage = (errorSendOTP.data as { error?: string })?.error
+    } else if (isErrorForgotPass) {
+      if ('data' in errorForgotPass && typeof errorForgotPass.data === 'object') {
+        const errorMessage = (errorForgotPass.data as { error?: string })?.error
         toast.error(errorMessage || 'Failed to send reset code')
       } else {
         toast.error('Failed to send reset code')
       }
     }
-  }, [isSuccessSendOTP, isErrorSendOTP, errorSendOTP, router, form])
+  }, [isSuccessForgotPass, isErrorForgotPass, errorForgotPass, router, form])
 
   if (isSubmitted) {
     return (
@@ -143,8 +140,8 @@ export default function ForgotPasswordPage() {
           <CustomButton
             type="submit"
             className="w-full text-white font-medium py-3 text-base rounded-sm transition-colors"
-            disabled={isLoadingSendOTP}
-            loading={isLoadingSendOTP}
+            disabled={isLoadingForgotPass}
+            loading={isLoadingForgotPass}
             loadingText="Sending..."
           >
             Send Reset Code

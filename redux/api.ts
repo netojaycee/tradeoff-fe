@@ -1,157 +1,307 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import type { BaseQueryFn, FetchArgs, FetchBaseQueryError } from "@reduxjs/toolkit/query";
-import { LoginCredentials, loginSchema, RegisterCredentials, registerSchema } from "@/lib/schema";
-import { clearUserInfo, setUserInfo } from "./slices/userSlice";
-import { AuthResponse } from "@/lib/types";
+import { 
+    LoginCredentials, 
+    RegisterCredentials,
+    VerifyEmailCredentials,
+    ResendVerificationCredentials,
+    ForgotPasswordCredentials,
+    ResetPasswordCredentials,
+    RefreshTokenCredentials,
+    CheckoutCredentials
+} from "@/lib/schema";
+import { clearUserInfo, setUserInfo, setTokens } from "./slices/userSlice";
+import { 
+    TradeOffApiResponse, 
+    AuthData, 
+    TokenResponse, 
+    User 
+} from "@/lib/types";
+import { RootState } from "./store";
+import { setAuthCookies, clearAuthCookies } from "@/lib/utils/cookies";
 
 
 const BASE_URL =
     process.env.NODE_ENV === "production"
-        ? process.env.BASE_URL || "https://pot-dev-mu.vercel.app"
-        : `http://localhost:${process.env.PORT || 2900}`;
+        ? process.env.BASE_URL || "https://api.tradeoff.com"
+        : `http://localhost:3050`;
 
-// Base query with TypeScript annotations
-const baseQuery: BaseQueryFn<FetchArgs, unknown, FetchBaseQueryError> = fetchBaseQuery({
-    baseUrl: `${BASE_URL}/api/v1`,
-    // Here we remove reading the token manually and just set credentials: 'include'
-    credentials: 'include',
-    prepareHeaders: (headers: Headers) => {
-        headers.set("Content-Type", "application/json");
-        return headers;
-    },
-});
+// Helper functions for token management
+const getTokenFromStorage = (): string | null => {
+    if (typeof window !== 'undefined') {
+        return localStorage.getItem('accessToken');
+    }
+    return null;
+};
+
+const getRefreshTokenFromStorage = (): string | null => {
+    if (typeof window !== 'undefined') {
+        return localStorage.getItem('refreshToken');
+    }
+    return null;
+};
+
+const setTokensInStorage = (accessToken: string, refreshToken: string): void => {
+    if (typeof window !== 'undefined') {
+        // Store in localStorage
+        localStorage.setItem('accessToken', accessToken);
+        localStorage.setItem('refreshToken', refreshToken);
+        
+        // Also store in cookies for middleware access
+        setAuthCookies(accessToken, refreshToken);
+    }
+};
+
+const clearTokensFromStorage = (): void => {
+    if (typeof window !== 'undefined') {
+        // Clear localStorage
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('refreshToken');
+        
+        // Clear cookies
+        clearAuthCookies();
+    }
+};
+
+// Base query with automatic token refresh
+const baseQueryWithReauth: BaseQueryFn<FetchArgs, unknown, FetchBaseQueryError> = async (
+    args,
+    api,
+    extraOptions
+) => {
+    // Base query configuration
+    const baseQuery = fetchBaseQuery({
+        baseUrl: `${BASE_URL}/api/v1`,
+        prepareHeaders: (headers, { getState }) => {
+            // Get token from state or localStorage
+            const state = getState() as RootState;
+            const token = state.auth.accessToken || getTokenFromStorage();
+            
+            if (token) {
+                headers.set('Authorization', `Bearer ${token}`);
+            }
+            
+            headers.set('Content-Type', 'application/json');
+            return headers;
+        },
+    });
+
+    // Try the initial request
+    let result = await baseQuery(args, api, extraOptions);
+
+    // If we get a 401 error, try to refresh the token
+    if (result.error?.status === 401) {
+        console.log('Token expired, attempting refresh...');
+        
+        const state = api.getState() as RootState;
+        const refreshToken = state.auth.refreshToken || getRefreshTokenFromStorage();
+        
+        if (refreshToken) {
+            // Attempt to refresh the token
+            const refreshResult = await baseQuery(
+                {
+                    url: '/auth/refresh-token',
+                    method: 'POST',
+                    body: { refreshToken },
+                },
+                api,
+                extraOptions
+            );
+
+            if (refreshResult.data) {
+                const refreshData = refreshResult.data as TradeOffApiResponse<TokenResponse>;
+                
+                if (refreshData.success && refreshData.data) {
+                    // Store the new tokens
+                    const { accessToken, refreshToken: newRefreshToken } = refreshData.data;
+                    
+                    // Update Redux store
+                    api.dispatch(setTokens({
+                        accessToken,
+                        refreshToken: newRefreshToken
+                    }));
+                    
+                    // Update localStorage
+                    setTokensInStorage(accessToken, newRefreshToken);
+                    
+                    // Retry the original request with new token
+                    result = await baseQuery(args, api, extraOptions);
+                }
+            } else {
+                // Refresh failed, clear tokens and redirect to login
+                console.log('Token refresh failed, logging out...');
+                api.dispatch(clearUserInfo());
+                clearTokensFromStorage();
+                
+                // Redirect to login page
+                if (typeof window !== 'undefined') {
+                    window.location.href = '/login';
+                }
+            }
+        } else {
+            // No refresh token available, clear state and redirect
+            api.dispatch(clearUserInfo());
+            clearTokensFromStorage();
+            
+            if (typeof window !== 'undefined') {
+                window.location.href = '/auth/login';
+            }
+        }
+    }
+
+    return result;
+};
 
 
 // Define the API
 export const api = createApi({
     reducerPath: "api",
-    baseQuery,
+    baseQuery: baseQueryWithReauth,
     tagTypes: ["User", "Product", "Category"],
     endpoints: (builder) => ({
-        // Register Endpoint
-        register: builder.mutation<AuthResponse, RegisterCredentials>({
+        // AUTHENTICATION ENDPOINTS - TradeOff API
+
+        // 1. Register User
+        register: builder.mutation<TradeOffApiResponse<AuthData>, RegisterCredentials>({
             query: (credentials) => ({
                 url: "/auth/register",
                 method: "POST",
-                body: registerSchema.parse(credentials),
-            }),
-            onQueryStarted: async (_arg, { queryFulfilled }) => {
-                try {
-                    await queryFulfilled;
-                    // setCookie("token", data.token, 24 * 60 * 60); // 1 day
-                } catch (error) {
-                    console.error("Register failed:", error);
-                }
-            },
-        }),
-
-        // Login Endpoint
-        login: builder.mutation<AuthResponse, LoginCredentials>({
-            query: (credentials) => ({
-                url: "/auth/login",
-                method: "POST",
-                body: loginSchema.parse(credentials),
+                body: credentials,
             }),
             onQueryStarted: async (_arg, { dispatch, queryFulfilled }) => {
                 try {
                     const { data } = await queryFulfilled;
-                    // setCookie("token", data.token, 24 * 60 * 60); // 1 day
-                    dispatch(setUserInfo({
-                        ...data.user,
-                        full_name: `${data.user.first_name} ${data.user.last_name}`
-                    }));
+                    if (data.success && data.data) {
+                        const { user, accessToken, refreshToken } = data.data;
+                        
+                        // Store tokens in localStorage
+                        setTokensInStorage(accessToken, refreshToken);
+                        
+                        // Update Redux store
+                        dispatch(setTokens({ accessToken, refreshToken }));
+                        dispatch(setUserInfo(user));
+                    }
+                } catch (error) {
+                    console.error("Registration failed:", error);
+                }
+            },
+        }),
 
-
-                    console.log(data.user);
-                    // dispatch(setAuthenticated(true));
+        // 2. Login User
+        login: builder.mutation<TradeOffApiResponse<AuthData>, LoginCredentials>({
+            query: (credentials) => ({
+                url: "/auth/login",
+                method: "POST",
+                body: credentials,
+            }),
+            onQueryStarted: async (_arg, { dispatch, queryFulfilled }) => {
+                try {
+                    const { data } = await queryFulfilled;
+                    if (data.success && data.data) {
+                        const { user, accessToken, refreshToken } = data.data;
+                        
+                        // Store tokens in localStorage
+                        setTokensInStorage(accessToken, refreshToken);
+                        
+                        // Update Redux store
+                        dispatch(setTokens({ accessToken, refreshToken }));
+                        dispatch(setUserInfo(user));
+                    }
                 } catch (error) {
                     console.error("Login failed:", error);
                 }
             },
         }),
 
-        // Send OTP Endpoint
-        sendOTP: builder.mutation<{ message: string }, { email: string, type: "register" | "forgot-password" }>({
+        // 3. Verify Email (POST with code)
+        verifyEmail: builder.mutation<TradeOffApiResponse, {  code: string }>({
             query: (credentials) => ({
-                url: "/auth/send-otp",
+                url: "/auth/verify-email",
                 method: "POST",
                 body: credentials,
             }),
-            onQueryStarted: async (_arg, { queryFulfilled }) => {
-                try {
-                    await queryFulfilled;
-                } catch (error) {
-                    console.error("Send OTP failed:", error);
-                }
-            },
         }),
 
-        // Verify OTP Endpoint
-        verify: builder.mutation<{ message: string, resetToken: string }, { email: string; code: string }>({
-            query: (credentials) => ({
-                url: "/auth/verify",
-                method: "POST",
-                body: { email: credentials.email, code: credentials.code, type: "register" },
-            }),
-            onQueryStarted: async (_arg, { queryFulfilled }) => {
-                try {
-                    await queryFulfilled;
-
-                } catch (error) {
-                    console.error("Verify OTP failed:", error);
-                }
-            },
-        }),
-
-        // Change Password Endpoint
-        changePassword: builder.mutation<
-            { message: string },
-            { email: string; password: string; resetToken: string }>({
-                query: (credentials) => ({
-                    url: "/auth/change-password",
-                    method: "POST",
-                    body: credentials,
-                }),
-                onQueryStarted: async (_arg, { queryFulfilled }) => {
-                    try {
-                        await queryFulfilled;
-                    } catch (error) {
-                        console.error("Change password failed:", error);
-                    }
-                },
-            }),
-
-
-
-        // Google OAuth Endpoint (GET only for redirect to Google)
-        getGoogleAuthUrl: builder.query<{ url: string }, void>({
-            query: () => ({
-                url: "/auth/google",
+        // 4. Verify Email (GET with URL parameter) - alternative endpoint
+        verifyEmailByUrl: builder.mutation<TradeOffApiResponse, { code: string }>({
+            query: ({ code }) => ({
+                url: `/auth/verify-email/${code}`,
                 method: "GET",
             }),
         }),
 
-        // Google OAuth Endpoint (POST only for callback)
-        google: builder.mutation<AuthResponse, { code: string }>({
+        // 5. Resend Verification Code
+        resendVerification: builder.mutation<TradeOffApiResponse, ResendVerificationCredentials>({
             query: (credentials) => ({
-                url: "/auth/google/callback",
+                url: "/auth/resend-verification",
                 method: "POST",
-                body: { code: credentials.code },
+                body: credentials,
             }),
-            onQueryStarted: async (_arg, { queryFulfilled }) => {
+        }),
+
+        // 6. Forgot Password
+        forgotPassword: builder.mutation<TradeOffApiResponse, ForgotPasswordCredentials>({
+            query: (credentials) => ({
+                url: "/auth/forgot-password",
+                method: "POST",
+                body: credentials,
+            }),
+        }),
+
+        // 7. Reset Password
+        resetPassword: builder.mutation<TradeOffApiResponse, {code: string; newPassword:string}>({
+            query: (credentials) => ({
+                url: "/auth/reset-password",
+                method: "POST",
+                body: credentials,
+            }),
+        }),
+
+        // 8. Refresh Token (handled automatically by baseQueryWithReauth)
+        refreshToken: builder.mutation<TradeOffApiResponse<TokenResponse>, RefreshTokenCredentials>({
+            query: (credentials) => ({
+                url: "/auth/refresh-token",
+                method: "POST",
+                body: credentials,
+            }),
+            onQueryStarted: async (_arg, { dispatch, queryFulfilled }) => {
                 try {
-                    await queryFulfilled;
-                    // setCookie("token", data.token, 24 * 60 * 60); // 1 day
-                    // dispatch(setUserInfo(data.user));
-                    // dispatch(setAuthenticated(true));
+                    const { data } = await queryFulfilled;
+                    if (data.success && data.data) {
+                        const { accessToken, refreshToken } = data.data;
+                        
+                        // Store new tokens
+                        setTokensInStorage(accessToken, refreshToken);
+                        dispatch(setTokens({ accessToken, refreshToken }));
+                    }
                 } catch (error) {
-                    console.error("Google auth failed:", error);
+                    console.error("Token refresh failed:", error);
+                    // Clear tokens and redirect to login
+                    dispatch(clearUserInfo());
+                    clearTokensFromStorage();
                 }
             },
         }),
 
-        // Logout Endpoint
-        logout: builder.mutation<{ message: string }, void>({
+        // 9. Get Profile (Protected)
+        getProfile: builder.query<TradeOffApiResponse<{ user: User }>, void>({
+            query: () => ({ url: "/auth/profile" }),
+            keepUnusedDataFor: 600,
+            providesTags: ["User"],
+            onQueryStarted: async (_arg, { dispatch, queryFulfilled }) => {
+                try {
+                    const { data } = await queryFulfilled;
+                    if (data.success && data.data?.user) {
+                        dispatch(setUserInfo(data.data.user));
+                    }
+                } catch (error) {
+                    console.error("Get profile failed:", error);
+                }
+            },
+        }),
+
+        // 10. Logout (clears tokens)
+        logout: builder.mutation<TradeOffApiResponse, void>({
             query: () => ({
                 url: "/auth/logout",
                 method: "POST",
@@ -159,232 +309,22 @@ export const api = createApi({
             onQueryStarted: async (_arg, { dispatch, queryFulfilled }) => {
                 try {
                     await queryFulfilled;
-                    dispatch(clearUserInfo())
+                    // Clear all auth data
+                    dispatch(clearUserInfo());
+                    clearTokensFromStorage();
                 } catch (error) {
                     console.error("Logout failed:", error);
+                    // Clear local data anyway
+                    dispatch(clearUserInfo());
+                    clearTokensFromStorage();
                 }
             },
         }),
 
-        // Get User (for internal use after login/verify/google)
-        getUser: builder.query<AuthResponse, void>({
-            query: () => ({ url: "/auth/me" }),
-            keepUnusedDataFor: 600,
-            providesTags: ["User"],
-            onQueryStarted: async (_arg, { dispatch, queryFulfilled }) => {
-                try {
-                    const { data } = await queryFulfilled;
-
-                    dispatch(setUserInfo({
-                        ...data.user,
-                        full_name: `${data.user.first_name} ${data.user.last_name}`
-                    }));
-
-                } catch (error) {
-                    console.error("Get user failed:", error);
-                }
-            },
-        }),
-
-        // Get all categories (with pagination)
-        // getCategories: builder.query<
-        //     { categories: Category[], pagination: { total: number, page: number, limit: number, totalPages: number, hasNextPage: boolean, hasPrevPage: boolean } },
-        //     { page?: number; limit?: number }
-        // >({
-        //     query: ({ page = 1, limit = 10 }) => ({
-        //         url: "/categories",
-        //         method: "GET",
-        //         params: { page, limit },
-        //     }),
-        //     providesTags: ["Category"],
-        // }),
-
-        // // Get a category by ID or slug
-        // getCategoryById: builder.query<Category, string>({
-        //     query: (slug) => ({
-        //         url: `/categories/${slug}`,
-        //         method: "GET",
-        //     }),
-        //     providesTags: (_result, error, slug) => [{ type: "Category", id: slug }],
-        // }),
-
-        // // Add a new category
-        // addCategory: builder.mutation<Category, { name: string }>({
-        //     query: (data) => ({
-        //         url: "/categories",
-        //         method: "POST",
-        //         body: data,
-        //     }),
-        //     invalidatesTags: ["Category"],
-        // }),
-
-        // // Update a category by ID or slug
-        // updateCategory: builder.mutation<Category, { slug: string; name: string }>({
-        //     query: ({ slug, ...data }) => ({
-        //         url: `/categories/${slug}`,
-        //         method: "PATCH",
-        //         body: data,
-        //     }),
-        //     invalidatesTags: (result, error, { slug }) => [
-        //         { type: "Category", id: slug },
-        //         "Category",
-        //     ],
-        // }),
-
-        // // Delete a category by ID or slug
-        // deleteCategory: builder.mutation<{ message: string }, string>({
-        //     query: (slug) => ({
-        //         url: `/categories/${slug}`,
-        //         method: "DELETE",
-        //     }),
-        //     invalidatesTags: (result, error, slug) => [
-        //         { type: "Category", id: slug },
-        //         "Category",
-        //     ],
-        // }),
-
-        // // Get all products (with pagination and optional filtering)
-        // getProducts: builder.query<
-        //     { products: Product[], pagination: { total: number, page: number, limit: number, totalPages: number, hasNextPage: boolean, hasPrevPage: boolean } },
-        //     { page?: number; limit?: number; type?: string; query?: string }
-        // >({
-        //     query: ({ page = 1, limit = 10, type, query }) => ({
-        //         url: "/products",
-        //         method: "GET",
-        //         params: { page, limit, type, query },
-        //     }),
-        //     providesTags: ["Product"],
-        // }),
-
-        // // Get products by category (with pagination)
-        // getProductsByCategory: builder.query<
-        //     { data: Product[], pagination: { page: number, limit: number } },
-        //     { category: string; page?: number; limit?: number }
-        // >({
-        //     query: ({ category, page = 1, limit = 10 }) => ({
-        //         url: `/products/category/${category}`,
-        //         method: "GET",
-        //         params: { page, limit },
-        //     }),
-        //     providesTags: (result, error, { category }) => [
-        //         { type: "Product", id: `CATEGORY-${category}` },
-        //         "Product",
-        //     ],
-        // }),
-
-        // // Get a product by ID or slug
-        // getProductById: builder.query<Product, string>({
-        //     query: (slug) => ({
-        //         url: `/products/${slug}`,
-        //         method: "GET",
-        //     }),
-        //     providesTags: (result, error, slug) => [{ type: "Product", id: slug }],
-        // }),
-
-        // // Add a new product
-        // addProduct: builder.mutation<Product, { name: string, type: string, categoryId?: string, description: string, image: string, perfectFor?: string[], whyChoose?: string[], price: number, discountPrice?: number, tags: string[], itemsInGift?: string[] }>({
-        //     query: (data) => ({
-        //         url: "/products",
-        //         method: "POST",
-        //         body: data,
-        //     }),
-        //     invalidatesTags: ["Product"],
-        // }),
-
-        // // Update a product by ID or slug
-        // updateProduct: builder.mutation<Product, { slug: string; name?: string; type?: string; categoryId?: string; description?: string; image?: string; perfectFor?: string[]; whyChoose?: string[]; price?: number; discountPrice?: number; tags?: string[]; itemsInGift?: string[] }>({
-        //     query: ({ slug, ...data }) => ({
-        //         url: `/products/${slug}`,
-        //         method: "PATCH",
-        //         body: data,
-        //     }),
-        //     invalidatesTags: (result, error, { slug }) => [
-        //         { type: "Product", id: slug },
-        //         "Product",
-        //     ],
-        // }),
-
-        // // Delete a product by ID or slug
-        // deleteProduct: builder.mutation<{ message: string }, string>({
-        //     query: (slug) => ({
-        //         url: `/products/${slug}`,
-        //         method: "DELETE",
-        //     }),
-        //     invalidatesTags: (result, error, slug) => [
-        //         { type: "Product", id: slug },
-        //         "Product",
-        //     ],
-        // }),
-        // // Get all packages (with pagination)
-        // getPackages: builder.query<
-        //     { packages: Package[], pagination: { total: number, page: number, limit: number, totalPages: number, hasNextPage: boolean, hasPrevPage: boolean } },
-        //     { page?: number; limit?: number }
-        // >({
-        //     query: ({ page = 1, limit = 10 }) => ({
-        //         url: "/packages",
-        //         method: "GET",
-        //         params: { page, limit },
-        //     }),
-        //     providesTags: ["Package"],
-        // }),
-
-        // // Get a package by ID
-        // getPackageById: builder.query<Package, string>({
-        //     query: (id) => ({
-        //         url: `/packages/${id}`,
-        //         method: "GET",
-        //     }),
-        //     providesTags: (result, error, id) => [{ type: "Package", id }],
-        // }),
-
-        // // Add a new package
-        // addPackage: builder.mutation<Package, { name: string, image: string }>({
-        //     query: (data) => ({
-        //         url: "/packages",
-        //         method: "POST",
-        //         body: data,
-        //     }),
-        //     invalidatesTags: ["Package"],
-        // }),
-
-        // // Update a package by ID
-        // updatePackage: builder.mutation<Package, { id: string; name?: string; image?: string }>({
-        //     query: ({ id, ...data }) => ({
-        //         url: `/packages/${id}`,
-        //         method: "PATCH",
-        //         body: data,
-        //     }),
-        //     invalidatesTags: (result, error, { id }) => [
-        //         { type: "Package", id },
-        //         "Package",
-        //     ],
-        // }),
-
-        // // Delete a package by ID
-        // deletePackage: builder.mutation<{ message: string }, string>({
-        //     query: (id) => ({
-        //         url: `/packages/${id}`,
-        //         method: "DELETE",
-        //     }),
-        //     invalidatesTags: (result, error, id) => [
-        //         { type: "Package", id },
-        //         "Package",
-        //     ],
-        // }),
-
-        // Checkout with Paystack
+        // CHECKOUT ENDPOINT (keeping existing functionality)
         checkout: builder.mutation<
             { authorization_url: string, access_code: string, reference: string },
-            { 
-                firstName: string;
-                lastName: string;
-                phoneNumber: string;
-                email: string;
-                state: string;
-                lga: string;
-                streetAddress: string;
-                paymentMethod: string;
-                // Order details
+            CheckoutCredentials & {
                 items: Array<{
                     name: string;
                     price: number;
@@ -413,22 +353,30 @@ export const api = createApi({
                 }
             },
         }),
-
     }),
 });
 
 // Export hooks with TypeScript types
+// Export hooks for usage in functional components
 export const {
+    // Auth Mutations
     useRegisterMutation,
     useLoginMutation,
-    useSendOTPMutation,
-    useVerifyMutation,
-    useChangePasswordMutation,
-    useGetGoogleAuthUrlQuery,
-    useGoogleMutation,
+    useVerifyEmailMutation,
+    useVerifyEmailByUrlMutation,
+    useResendVerificationMutation,
+    useForgotPasswordMutation,
+    useResetPasswordMutation,
+    useRefreshTokenMutation,
     useLogoutMutation,
-    useGetUserQuery,
+    
+    // Auth Queries
+    useGetProfileQuery,
+    
+    // Checkout
     useCheckoutMutation,
+    
+    // Keep these commented out for now
     // useGetCategoriesQuery,
     // useGetCategoryByIdQuery,
     // useAddCategoryMutation,
@@ -445,8 +393,6 @@ export const {
     // useUpdatePackageMutation,
     // useDeletePackageMutation,
     // useGetProductsByCategoryQuery,
-
-
 } = api;
 
 export type AppApi = typeof api;

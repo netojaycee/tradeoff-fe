@@ -3,17 +3,17 @@ import { setupListeners } from "@reduxjs/toolkit/query";
 import { persistStore, persistReducer } from "redux-persist";
 import storage from "redux-persist/lib/storage";
 import { api } from "./api";
-import userReducer from "./slices/userSlice";
+import authReducer from "./slices/userSlice";
 
 const rootReducer = combineReducers({
   [api.reducerPath]: api.reducer,
-  user_pot: userReducer,
+  auth: authReducer,
 });
 
 const persistConfig = {
   key: "root_tradeoff",
   storage,
-  // whitelist: ["user_tradeoff"], // Only persist the user slice (add more slice keys if needed)
+  whitelist: ["auth"], // Only persist the auth slice
 };
 
 const persistedReducer = persistReducer(persistConfig, rootReducer);

@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useRegisterMutation } from '@/redux/api'
-import { CustomButton, CustomInput, AuthLayout, PasswordStrength } from '@/components/local/shared'
+import { CustomButton, CustomInput, AuthLayout, PasswordStrength } from '@/components/local'
 import {
   Form,
   FormControl,
@@ -15,58 +15,104 @@ import {
 } from '@/components/ui/form'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { registerSchema, type RegisterCredentials } from '@/lib/schema'
+import { registerFormSchema, type RegisterCredentials } from '@/lib/schema'
+import { useRedirectIfAuthenticated } from '@/lib/hooks/useAuth'
+
+// Form data interface (includes confirmPassword for frontend validation)
+type RegisterFormData = {
+  firstName: string;
+  lastName: string;
+  email: string;
+  password: string;
+  confirmPassword: string;
+  phoneNumber: string;
+}
 
 export default function Register() {
   const router = useRouter()
   const [password, setPassword] = useState('')
   
+  // Redirect to dashboard if already authenticated
+  const { isLoading: authLoading } = useRedirectIfAuthenticated('/dashboard')
+  
   const [
     register,
     {
       isLoading: isLoadingRegister,
-      isSuccess: isSuccessRegister,
       isError: isErrorRegister,
       error: errorRegister,
     },
   ] = useRegisterMutation()
 
-  const form = useForm<RegisterCredentials>({
-    resolver: zodResolver(registerSchema),
+  const form = useForm<RegisterFormData>({
+    resolver: zodResolver(registerFormSchema),
     defaultValues: {
-      first_name: '',
-      last_name: '',
+      firstName: '',
+      lastName: '',
       email: '',
       password: '',
-      confirm_password: '',
+      confirmPassword: '',
+      phoneNumber: '',
     },
   })
 
-  const onSubmit = async (values: RegisterCredentials) => {
+  const onSubmit = async (values: RegisterFormData) => {
     try {
-      await register(values).unwrap()
-    } catch (error) {
+      // Create API data without confirmPassword
+      const apiData: RegisterCredentials = {
+        firstName: values.firstName,
+        lastName: values.lastName,
+        email: values.email,
+        password: values.password,
+        phoneNumber: values.phoneNumber,
+      }
+      
+      const result = await register(apiData).unwrap()
+      
+      if (result.success) {
+        toast.success('Registration successful! Please check your email for verification code.')
+        // Store email in localStorage for verification page
+        localStorage.setItem('verificationEmail', values.email)
+        router.push('/auth/verify-otp')
+      } else {
+        toast.error(result.message || 'Registration failed. Please try again.')
+      }
+    } catch (error: unknown) {
       console.error('Register error:', error)
+      
+      const errorObj = error as { data?: { message?: string }; message?: string }
+      toast.error(
+        errorObj.data?.message || 
+        errorObj.message || 
+        'Registration failed. Please try again.'
+      )
     }
   }
 
   useEffect(() => {
-    if (isSuccessRegister) {
-      toast.success('Registration Successful')
-      router.push('/auth/verify-otp')
-    } else if (isErrorRegister) {
+    if (isErrorRegister) {
       if ('data' in errorRegister && typeof errorRegister.data === 'object') {
-        const errorMessage = (errorRegister.data as { error?: string })?.error
+        const errorMessage = (errorRegister.data as { message?: string })?.message
         toast.error(errorMessage || 'Registration failed')
       } else {
         toast.error('Registration failed')
       }
     }
-  }, [isSuccessRegister, isErrorRegister, errorRegister, router])
+  }, [isErrorRegister, errorRegister])
 
   const handleGoogleSignUp = () => {
     // Handle Google sign up logic here
     console.log('Google sign up')
+    toast.info('Google sign up coming soon!')
+  }
+
+  // Show loading state while checking auth
+  if (authLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
+      </div>
+    )
   }
 
   return (
@@ -81,7 +127,7 @@ export default function Register() {
           <div className="grid grid-cols-2 gap-4">
             <FormField
               control={form.control}
-              name="first_name"
+              name="firstName"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel className="text-[#525252] font-medium">
@@ -100,7 +146,7 @@ export default function Register() {
 
             <FormField
               control={form.control}
-              name="last_name"
+              name="lastName"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel className="text-[#525252] font-medium">
@@ -141,6 +187,29 @@ export default function Register() {
             )}
           />
 
+          {/* Phone Number Field */}
+          <FormField
+            control={form.control}
+            name="phoneNumber"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-[#525252] font-medium">
+                  Phone Number
+                </FormLabel>
+                <FormControl>
+                  <CustomInput
+                    type="tel"
+                    placeholder="+234 801 234 5678"
+                    icon="mdi:phone-outline"
+                    iconPosition="left"
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
           {/* Password Field with Strength Indicator */}
           <FormField
             control={form.control}
@@ -170,7 +239,7 @@ export default function Register() {
           {/* Confirm Password Field */}
           <FormField
             control={form.control}
-            name="confirm_password"
+            name="confirmPassword"
             render={({ field }) => (
               <FormItem>
                 <FormLabel className="text-[#525252] font-medium">

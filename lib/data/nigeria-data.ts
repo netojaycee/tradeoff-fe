@@ -48,4 +48,4 @@ export const correctLGAs = {
 } as const;
 
 export type State = typeof correctStates[number];
-export type LGA = typeof correctLGAs[State][number];
+export type LGA = typeof correctLGAs[keyof typeof correctLGAs][number];

@@ -6,8 +6,8 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Icon } from '@iconify/react'
 
-import { CustomInput } from '@/components/local/shared/CustomInput'
-import { CustomButton } from '@/components/local/shared/CustomButton'
+import { CustomInput } from '@/components/local/custom/CustomInput'
+import { CustomButton } from '@/components/local/custom/CustomButton'
 import {
   Form,
   FormControl,

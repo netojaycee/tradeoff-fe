@@ -1,110 +1,116 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import { Input as ShadcnInput } from "@/components/ui/input"
-import { CustomButton } from "./CustomButton"
-import { cn } from "@/lib/utils"
-import { Icon } from "@iconify/react"
+import * as React from "react";
+import { Input as ShadcnInput } from "@/components/ui/input";
+import { CustomButton } from "./CustomButton";
+import { cn } from "@/lib/utils";
+import { Icon } from "@iconify/react";
 
 interface CustomInputProps extends React.ComponentProps<typeof ShadcnInput> {
   /**
    * Icon to display (using Iconify)
    */
-  icon?: string
+  icon?: string;
   /**
    * Position of the icon
    */
-  iconPosition?: "left" | "right"
+  iconPosition?: "left" | "right";
   /**
    * Custom icon size
    */
-  iconSize?: string | number
+  iconSize?: string | number;
   /**
    * Makes the icon clickable
    */
-  onIconClick?: () => void
+  onIconClick?: () => void;
   /**
    * Password input with toggle visibility
    */
-  isPassword?: boolean
+  isPassword?: boolean;
   /**
    * Button to embed inside the input (right side)
    */
   button?: {
-    text: string
-    onClick: () => void
-    variant?: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link"
-    size?: "default" | "sm" | "lg" | "icon" | "icon-sm" | "icon-lg"
-    icon?: string
-    loading?: boolean
-    loadingText?: string
-    disabled?: boolean
-  }
+    text: string;
+    onClick: () => void;
+    variant?:
+      | "default"
+      | "destructive"
+      | "outline"
+      | "secondary"
+      | "ghost"
+      | "link";
+    size?: "default" | "sm" | "lg" | "icon" | "icon-sm" | "icon-lg";
+    icon?: string;
+    loading?: boolean;
+    loadingText?: string;
+    disabled?: boolean;
+    className?: string;
+  };
   /**
    * Container wrapper class
    */
-  wrapperClassName?: string
+  wrapperClassName?: string;
   /**
    * Icon wrapper class
    */
-  iconClassName?: string
+  iconClassName?: string;
 }
 
 const CustomInput = React.forwardRef<HTMLInputElement, CustomInputProps>(
-  ({ 
-    className,
-    wrapperClassName,
-    iconClassName,
-    icon, 
-    iconPosition = "right", 
-    iconSize = "1rem", 
-    onIconClick,
-    isPassword = false,
-    button,
-    type: propType,
-    ...props 
-  }, ref) => {
-    const [showPassword, setShowPassword] = React.useState(false)
-    const [inputType, setInputType] = React.useState(propType)
+  (
+    {
+      className,
+      wrapperClassName,
+      iconClassName,
+      icon,
+      iconPosition = "right",
+      iconSize = "1rem",
+      onIconClick,
+      isPassword = false,
+      button,
+      type: propType,
+      ...props
+    },
+    ref
+  ) => {
+    const [showPassword, setShowPassword] = React.useState(false);
+    const [inputType, setInputType] = React.useState(propType);
 
     // Handle password visibility toggle
     React.useEffect(() => {
       if (isPassword) {
-        setInputType(showPassword ? "text" : "password")
+        setInputType(showPassword ? "text" : "password");
       } else {
-        setInputType(propType)
+        setInputType(propType);
       }
-    }, [isPassword, showPassword, propType])
+    }, [isPassword, showPassword, propType]);
 
     const togglePasswordVisibility = () => {
-      setShowPassword(!showPassword)
-    }
+      setShowPassword(!showPassword);
+    };
 
     // Determine padding based on icons and button
     const getPadding = () => {
-      let leftPadding = ""
-      let rightPadding = ""
+      let leftPadding = "";
+      let rightPadding = "";
 
       // Left padding for left icon
       if (icon && iconPosition === "left") {
-        leftPadding = "pl-10"
+        leftPadding = "pl-10";
       }
 
       // Right padding for right icon, password toggle, or button
-      if (
-        (icon && iconPosition === "right") || 
-        isPassword || 
-        button
-      ) {
-        rightPadding = button ? "pr-20" : "pr-10"
+      if ((icon && iconPosition === "right") || isPassword || button) {
+        rightPadding = button ? "pr-20" : "pr-10";
       }
 
-      return cn(leftPadding, rightPadding)
-    }
+      return cn(leftPadding, rightPadding);
+    };
 
     const renderIcon = (iconName: string, position: "left" | "right") => {
       const iconElement = (
-        <Icon 
+        <Icon
           icon={iconName}
           style={{ fontSize: iconSize }}
           className={cn(
@@ -114,10 +120,10 @@ const CustomInput = React.forwardRef<HTMLInputElement, CustomInputProps>(
           )}
           onClick={onIconClick}
         />
-      )
+      );
 
       return (
-        <div 
+        <div
           className={cn(
             "absolute top-1/2 transform -translate-y-1/2",
             position === "left" ? "left-3" : "right-3"
@@ -125,8 +131,8 @@ const CustomInput = React.forwardRef<HTMLInputElement, CustomInputProps>(
         >
           {iconElement}
         </div>
-      )
-    }
+      );
+    };
 
     const renderPasswordToggle = () => (
       <button
@@ -135,15 +141,19 @@ const CustomInput = React.forwardRef<HTMLInputElement, CustomInputProps>(
         className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
         aria-label={showPassword ? "Hide password" : "Show password"}
       >
-        <Icon 
-          icon={showPassword ? "material-symbols:visibility-off-outline" : "material-symbols:visibility-outline"}
+        <Icon
+          icon={
+            showPassword
+              ? "material-symbols:visibility-off-outline"
+              : "material-symbols:visibility-outline"
+          }
           style={{ fontSize: iconSize }}
         />
       </button>
-    )
+    );
 
     const renderButton = () => {
-      if (!button) return null
+      if (!button) return null;
 
       return (
         <div className="absolute right-1 top-1/2 transform -translate-y-1/2">
@@ -155,38 +165,39 @@ const CustomInput = React.forwardRef<HTMLInputElement, CustomInputProps>(
             loading={button.loading}
             loadingText={button.loadingText}
             disabled={button.disabled}
-            className="h-7"
+            className={cn("h-7", button.className)}
           >
             {button.text}
           </CustomButton>
         </div>
-      )
-    }
+      );
+    };
 
     return (
       <div className={cn("relative", wrapperClassName)}>
         <ShadcnInput
           ref={ref}
           type={inputType}
-          className={cn(
-            getPadding(),
-            className
-          )}
+          className={cn(getPadding(), className)}
           {...props}
         />
-        
+
         {/* Left Icon */}
         {icon && iconPosition === "left" && renderIcon(icon, "left")}
-        
+
         {/* Right Icon (not password and not button) */}
-        {icon && iconPosition === "right" && !isPassword && !button && renderIcon(icon, "right")}
-        
+        {icon &&
+          iconPosition === "right" &&
+          !isPassword &&
+          !button &&
+          renderIcon(icon, "right")}
+
         {/* Password Toggle */}
         {isPassword && !button && renderPasswordToggle()}
-        
+
         {/* Embedded Button */}
         {button && renderButton()}
-        
+
         {/* Password toggle with button (password takes precedence, button moves left) */}
         {isPassword && button && (
           <>
@@ -199,7 +210,7 @@ const CustomInput = React.forwardRef<HTMLInputElement, CustomInputProps>(
                 loading={button.loading}
                 loadingText={button.loadingText}
                 disabled={button.disabled}
-                className="h-7"
+                className={cn("h-7", button.className)}
               >
                 {button.text}
               </CustomButton>
@@ -210,18 +221,22 @@ const CustomInput = React.forwardRef<HTMLInputElement, CustomInputProps>(
               className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
               aria-label={showPassword ? "Hide password" : "Show password"}
             >
-              <Icon 
-                icon={showPassword ? "material-symbols:visibility-off-outline" : "material-symbols:visibility-outline"}
+              <Icon
+                icon={
+                  showPassword
+                    ? "material-symbols:visibility-off-outline"
+                    : "material-symbols:visibility-outline"
+                }
                 style={{ fontSize: iconSize }}
               />
             </button>
           </>
         )}
       </div>
-    )
+    );
   }
-)
+);
 
-CustomInput.displayName = "CustomInput"
+CustomInput.displayName = "CustomInput";
 
-export { CustomInput, type CustomInputProps }
+export { CustomInput, type CustomInputProps };

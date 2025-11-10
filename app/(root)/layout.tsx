@@ -1,4 +1,4 @@
-import { Footer } from "@/components/local/shared";
+import { Footer } from "@/components/local";
 import {Header} from "@/components/local/shared/Header";
 
 export default function RootLayout({

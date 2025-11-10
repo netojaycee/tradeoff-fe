@@ -2,7 +2,7 @@
 
 import React from 'react'
 import { Icon } from '@iconify/react'
-import { CustomButton } from '@/components/local/shared/CustomButton'
+import { CustomButton } from '@/components/local/custom/CustomButton'
 
 interface OrderDetails {
   orderId: string

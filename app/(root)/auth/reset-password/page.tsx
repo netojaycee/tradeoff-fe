@@ -1,10 +1,14 @@
-"use client"
-import { useEffect } from 'react'
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { useRouter, useSearchParams } from 'next/navigation'
-import { toast } from 'sonner'
-import { CustomButton, CustomInput, AuthLayout } from '@/components/local/shared'
+"use client";
+import { useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useRouter, useSearchParams } from "next/navigation";
+import { toast } from "sonner";
+import {
+  CustomButton,
+  CustomInput,
+  AuthLayout,
+} from "@/components/local";
 import {
   Form,
   FormControl,
@@ -12,78 +16,88 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from '@/components/ui/form'
-import { PasswordStrength } from '@/components/local/shared/PasswordStrength'
-import { useChangePasswordMutation } from '@/redux/api'
-import { resetPasswordSchema, type ResetPasswordCredentials } from '@/lib/schema'
+} from "@/components/ui/form";
+import { PasswordStrength } from "@/components/local/general/PasswordStrength";
+import { useResetPasswordMutation } from "@/redux/api";
+import {
+  resetPasswordSchema,
+  type ResetPasswordCredentials,
+} from "@/lib/schema";
 
 export default function ResetPasswordPage() {
-  const router = useRouter()
-  const searchParams = useSearchParams()
-  const email = searchParams.get("email") || ""
-  const tempPassword = searchParams.get("temp") || ""
-  
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  // const email = searchParams.get("email") || ""
+  const tempPassword = searchParams.get("code") || "";
+
   const [
-    changePassword,
+    resetPassword,
     {
-      isLoading: isLoadingChangePassword,
-      isSuccess: isSuccessChangePassword,
-      isError: isErrorChangePassword,
-      error: errorChangePassword,
+      isLoading: isLoadingResetPassword,
+      isSuccess: isSuccessResetPassword,
+      isError: isErrorResetPassword,
+      error: errorResetPassword,
     },
-  ] = useChangePasswordMutation()
+  ] = useResetPasswordMutation();
 
   const form = useForm<ResetPasswordCredentials>({
     resolver: zodResolver(resetPasswordSchema),
     defaultValues: {
-      temporary_password: tempPassword,
-      new_password: '',
-      confirm_password: '',
+      code: tempPassword,
+      newPassword: "",
+      confirmPassword: "",
     },
-  })
+  });
 
-  const newPassword = form.watch("new_password")
+  const newPassword = form.watch("newPassword");
 
   // Auto-fill temporary password if provided in query params
   useEffect(() => {
     if (tempPassword) {
-      form.setValue("temporary_password", tempPassword)
+      form.setValue("code", tempPassword);
     }
-  }, [tempPassword, form])
+  }, [tempPassword, form]);
 
   const onSubmit = async (values: ResetPasswordCredentials) => {
     try {
-      
-      await changePassword({
-        email: email,
-        password: values.new_password,
-        resetToken: values.temporary_password,
-      }).unwrap()
+      await resetPassword({
+        newPassword: values.newPassword,
+        code: values.code,
+      }).unwrap();
     } catch (error) {
-      console.error('Reset password error:', error)
+      console.error("Reset password error:", error);
     }
-  }
+  };
 
   useEffect(() => {
-    if (isSuccessChangePassword) {
-      toast.success('Password reset successfully!')
+    if (isSuccessResetPassword) {
+      toast.success("Password reset successfully!");
       // Navigate to login page
       setTimeout(() => {
-        router.push('/auth/login')
-      }, 1500)
-    } else if (isErrorChangePassword) {
-      if ('data' in errorChangePassword && typeof errorChangePassword.data === 'object') {
-        const errorMessage = (errorChangePassword.data as { error?: string })?.error
-        toast.error(errorMessage || 'Failed to reset password')
+        router.push("/auth/login");
+      }, 1500);
+    } else if (isErrorResetPassword) {
+      if (
+        "data" in errorResetPassword &&
+        typeof errorResetPassword.data === "object"
+      ) {
+        const errorMessage = (errorResetPassword.data as { error?: string })
+          ?.error;
+        toast.error(errorMessage || "Failed to reset password");
       } else {
-        toast.error('Failed to reset password')
+        toast.error("Failed to reset password");
       }
     }
-  }, [isSuccessChangePassword, isErrorChangePassword, errorChangePassword, router])
+  }, [
+    isSuccessResetPassword,
+    isErrorResetPassword,
+    errorResetPassword,
+    router,
+  ]);
 
   return (
-    <AuthLayout 
-      title="Set New Password" 
+    <AuthLayout
+      title="Set New Password"
       subtitle="Create a strong password for your account"
     >
       {/* Reset Password Form */}
@@ -92,7 +106,7 @@ export default function ResetPasswordPage() {
           {/* Temporary Password Field */}
           <FormField
             control={form.control}
-            name="temporary_password"
+            name="code"
             render={({ field }) => (
               <FormItem>
                 <FormLabel className="text-[#525252] font-medium">
@@ -115,7 +129,7 @@ export default function ResetPasswordPage() {
           {/* New Password Field */}
           <FormField
             control={form.control}
-            name="new_password"
+            name="newPassword"
             render={({ field }) => (
               <FormItem>
                 <FormLabel className="text-[#525252] font-medium">
@@ -129,9 +143,7 @@ export default function ResetPasswordPage() {
                   />
                 </FormControl>
                 <FormMessage />
-                {newPassword && (
-                  <PasswordStrength password={newPassword} />
-                )}
+                {newPassword && <PasswordStrength password={newPassword} />}
               </FormItem>
             )}
           />
@@ -139,7 +151,7 @@ export default function ResetPasswordPage() {
           {/* Confirm Password Field */}
           <FormField
             control={form.control}
-            name="confirm_password"
+            name="confirmPassword"
             render={({ field }) => (
               <FormItem>
                 <FormLabel className="text-[#525252] font-medium">
@@ -177,8 +189,8 @@ export default function ResetPasswordPage() {
           <CustomButton
             type="submit"
             className="w-full text-white font-medium py-3 text-base rounded-sm transition-colors"
-            disabled={isLoadingChangePassword}
-            loading={isLoadingChangePassword}
+            disabled={isLoadingResetPassword}
+            loading={isLoadingResetPassword}
             loadingText="Updating Password..."
           >
             Update Password
@@ -191,7 +203,7 @@ export default function ResetPasswordPage() {
         <button
           type="button"
           className="text-gray-600 hover:text-gray-800 transition-colors text-sm"
-          onClick={() => router.push('/auth/login')}
+          onClick={() => router.push("/auth/login")}
         >
           <span className="text-[#38BDF8] hover:text-[#2abdfc] font-medium">
             ← Back to Login
@@ -199,5 +211,5 @@ export default function ResetPasswordPage() {
         </button>
       </div>
     </AuthLayout>
-  )
+  );
 }
