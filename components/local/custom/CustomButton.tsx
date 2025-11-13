@@ -50,8 +50,8 @@ const CustomButton = React.forwardRef<HTMLButtonElement, CustomButtonProps>(
         icon={iconName} 
         style={{ 
           fontSize: iconSize,
-          ...(position === "left" && children && { marginRight: "0.5rem" }),
-          ...(position === "right" && children && { marginLeft: "0.5rem" })
+          ...(position === "left" && children && { marginRight: "0.1rem" }),
+          ...(position === "right" && children && { marginLeft: "0.1rem" })
         }}
       />
     )
@@ -70,7 +70,7 @@ const CustomButton = React.forwardRef<HTMLButtonElement, CustomButtonProps>(
     return (
       <ShadcnButton
         ref={ref}
-        className={cn(className)}
+        className={cn(className, "rounded cursor-pointer")}
         disabled={isDisabled}
         {...props}
       >

@@ -1,59 +1,79 @@
-"use client"
+"use client";
 
-import React, { useState } from 'react'
-import Image from 'next/image'
-import { Icon } from '@iconify/react'
-import { cn } from '@/lib/utils'
-import { CustomButton } from '@/components/local/custom/CustomButton'
+import React, { useState } from "react";
+import Image from "next/image";
+import { Icon } from "@iconify/react";
+import { cn } from "@/lib/utils";
+import { CustomButton } from "@/components/local/custom/CustomButton";
 import {
   Carousel,
   CarouselContent,
+  CarouselDots,
   CarouselItem,
   CarouselNext,
   CarouselPrevious,
-} from '@/components/ui/carousel'
-import { Product } from '@/lib/types'
+} from "@/components/ui/carousel";
+import { Product } from "@/lib/types";
+import Link from "next/link";
 
 interface ProductCardProps {
-  product: Product
-  onToggleFavorite?: (productId: string) => void
-  onAddToCart?: (productId: string) => void
-  className?: string
+  product: Product;
+  onToggleFavorite?: (productId: string) => void;
+  onAddToCart?: (productId: string) => void;
+  className?: string;
 }
 
-export default function ProductCard({ 
-  product, 
-  onToggleFavorite, 
+export default function ProductCard({
+  product,
+  onToggleFavorite,
   onAddToCart,
-  className 
+  className,
 }: ProductCardProps) {
-  const [isFavorite, setIsFavorite] = useState(product.isFavorite || false)
-  const [isAddingToCart, setIsAddingToCart] = useState(false)
+  const [isFavorite, setIsFavorite] = useState(product.isFavorite || false);
+  const [isAddingToCart, setIsAddingToCart] = useState(false);
 
   const handleToggleFavorite = () => {
-    setIsFavorite(!isFavorite)
-    onToggleFavorite?.(product.id)
-  }
+    setIsFavorite(!isFavorite);
+    onToggleFavorite?.(product.id);
+  };
 
   const handleAddToCart = async () => {
-    setIsAddingToCart(true)
-    onAddToCart?.(product.id)
+    setIsAddingToCart(true);
+    onAddToCart?.(product.id);
     // Simulate API call delay
-    setTimeout(() => setIsAddingToCart(false), 500)
-  }
+    setTimeout(() => setIsAddingToCart(false), 500);
+  };
 
-  const formatPrice = (price: number) => {
-    return `₦${price.toLocaleString()}`
-  }
+  const formatPrice = (price: number): string => {
+    return new Intl.NumberFormat("en-NG", {
+      style: "currency",
+      currency: "NGN",
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })
+      .format(price)
+      .replace("NGN", "₦"); // Replace NGN with ₦ symbol
+  };
 
   return (
-    <div className={cn("bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden group hover:shadow-lg transition-shadow duration-300", className)}>
+    <div
+      className={cn(
+        "bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden group hover:shadow-lg transition-shadow duration-300",
+        className
+      )}
+    >
       {/* Image Carousel Section */}
-      <div className="relative aspect-square">
+      <div className="relative aspect-square bg-[#F5F5F5]">
         {/* Discount Badge */}
         {product.discount && (
-          <div className="absolute top-3 left-3 z-20">
-            <div className="bg-red-500 text-white px-2 py-1 rounded-sm text-sm font-medium">
+          <div className="absolute top-3 left-0 z-20">
+            <div
+              className="inline-block bg-red-500 text-white py-0.5 pr-5 pl-3 text-sm font-medium"
+              style={{
+                clipPath:
+                  "polygon(0 0, 100% 0, 80% 50%, 80% 50%, 100% 100%, 0 100%)",
+              }}
+            >
               -{product.discount}%
             </div>
           </div>
@@ -61,7 +81,7 @@ export default function ProductCard({
 
         {/* Favorite Button */}
         <button
-          onClick={handleToggleFavorite}  
+          onClick={handleToggleFavorite}
           className="absolute top-3 right-3 z-20 p-2 bg-white/80 backdrop-blur-sm rounded-full hover:bg-white transition-colors duration-200"
         >
           <Icon
@@ -75,94 +95,96 @@ export default function ProductCard({
 
         {/* Image Carousel */}
         <Carousel className="w-full h-full">
-          <CarouselContent>
+          <CarouselContent className="h-full">
             {product.images.map((image, index) => (
-              <CarouselItem key={index}>
-                <div className="relative aspect-square">
-                  <Image
-                    src={image}
-                    alt={`${product.name} - Image ${index + 1}`}
-                    fill
-                    className="object-cover"
-                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                  />
+              <CarouselItem
+                key={index}
+                className="h-full flex items-center justify-center"
+              >
+                {/* ---------- IMAGE WRAPPER ---------- */}
+                <div className="w-full max-w-md mx-auto">
+                  {/* 92% of the slide height – change the % to make it taller/shorter */}
+                  <div className="relative w-full h-0 pb-[88%] md:pb-[92%] overflow-hidden">
+                    <Image
+                      src={image}
+                      alt={`${product.name} - Image ${index + 1}`}
+                      fill
+                      className="object-contain"
+                      sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                    />
+                  </div>
                 </div>
               </CarouselItem>
             ))}
           </CarouselContent>
-          
-          {/* Carousel Navigation - Only show if more than 1 image */}
-          {product.images.length > 1 && (
-            <>
-              <CarouselPrevious className="absolute left-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
-              <CarouselNext className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
-            </>
-          )}
+
+          {/* ---------- DOTS ---------- */}
+          <div className="absolute bottom-2 -right-14  md:left-1/2 md:-translate-x-1/2 w-full">
+            <CarouselDots />
+          </div>
         </Carousel>
 
-        {/* Carousel Indicators */}
-        {product.images.length > 1 && (
-          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex space-x-1">
-            {product.images.map((_, index) => (
-              <div key={index} className="w-2 h-2 rounded-full bg-white/60" />
-            ))}
+        
+
+        {/* Verified Badge */}
+        {product.isVerified && (
+          <div className="absolute bottom-0 left-2 z-20">
+            <div className="inline-flex items-center gap-1 px-1 border border-[#737373] rounded text-xs font-normal">
+              <span>Verified</span>
+              <Icon
+                icon="streamline-ultimate:check-badge-bold"
+                className="w-3 h-3 text-[#8BC34A]"
+              />
+            </div>
           </div>
         )}
       </div>
 
       {/* Product Details */}
-      <div className="p-4 space-y-3">
-        {/* Verified Badge */}
-        {product.isVerified && (
-          <div className="inline-flex items-center gap-1 px-2 py-1 bg-green-50 border border-green-200 rounded text-xs font-medium text-green-700">
-            <span>Verified</span>
-            <Icon icon="ph:check-circle-fill" className="w-3 h-3 text-green-600" />
-          </div>
-        )}
-
+      <div className="p-2 space-y-1 relative">
         {/* Product Name */}
-        <h3 className="font-semibold text-gray-900 text-lg leading-tight line-clamp-2">
-          {product.name}
+        <h3 className="font-semibold text-gray-900 text-base md:text-lg leading-tight line-clamp-1">
+          <Link href={`/${product.category.slug}/${product.slug}`} className="hover:underline">
+            {product.name}
+          </Link>
         </h3>
 
         {/* Category */}
-        <p className="text-gray-600 text-sm">
+        <p className="text-[#737373] text-sm underline underline-offset-2">
           {product.category.name}
         </p>
 
         {/* Condition */}
-        <p className="text-gray-600 text-sm">
-          Condition: {product.condition}
-        </p>
+        <p className="text-[#737373] text-sm">Condition: {product.condition}</p>
 
         {/* Price Section */}
-        <div className="flex items-center gap-2">
-          <span className="font-bold text-xl text-gray-900">
-            {formatPrice(product.price)}
-          </span>
-          {product.originalPrice && (
+        <div className="flex items-center gap-2 justify-between">
+          <div>
+            <span className="font-bold text-base md:text-xl text-[#555555]">
+              {formatPrice(product.price)}
+            </span>
+            {/* {product.originalPrice && (
             <span className="text-gray-500 line-through text-sm">
               {formatPrice(product.originalPrice)}
             </span>
-          )}
-        </div>
-
-        {/* Add to Cart Button */}
-        <div className="pt-2">
-          <CustomButton
-            onClick={handleAddToCart}
-            disabled={isAddingToCart}
-            loading={isAddingToCart}
-            className="w-full bg-[#38BDF8] hover:bg-[#0EA5E9] text-white py-2.5 rounded-sm transition-colors duration-200"
-            icon="lucide:plus"
-            iconPosition="left"
-            iconSize="1rem"
-          >
-            <span className="hidden sm:inline">Add to Cart</span>
-            <span className="sm:hidden">Cart</span>
-          </CustomButton>
+          )} */}
+          </div>
+          {/* Add to Cart Button */}
+          <div className="absolute right-0 pt-2">
+            <CustomButton
+              onClick={handleAddToCart}
+              disabled={isAddingToCart}
+              loading={isAddingToCart}
+              variant="default"
+              size="sm"
+              icon="lucide:plus"
+              iconPosition="left"
+            >
+              <span className="hidden sm:inline">Cart</span>
+            </CustomButton>
+          </div>
         </div>
       </div>
     </div>
-  )
+  );
 }

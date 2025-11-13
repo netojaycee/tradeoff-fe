@@ -46,8 +46,12 @@ export const transformFakeStoreProduct = (fakeProduct: FakeStoreProduct): Produc
   // Create category object
   const category: Category = {
     id: fakeProduct.category.replace(/[^a-zA-Z0-9]/g, '').toLowerCase(),
-    name: fakeProduct.category.charAt(0).toUpperCase() + fakeProduct.category.slice(1)
+    name: fakeProduct.category.charAt(0).toUpperCase() + fakeProduct.category.slice(1),
+    slug: fakeProduct.category.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
   }
+
+  const randomSixDigit = Math.floor(Math.random() * 1_000_000).toString().padStart(6, '0')
+  const slug = `${fakeProduct.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')}-${randomSixDigit}`
 
   return {
     id: fakeProduct.id.toString(),
@@ -61,7 +65,8 @@ export const transformFakeStoreProduct = (fakeProduct: FakeStoreProduct): Produc
     isVerified: Math.random() < 0.6, // 60% chance of being verified
     isFavorite: false, // Default to false
     description: fakeProduct.description,
-    seller: generateSellerInfo()
+    seller: generateSellerInfo(),
+    slug: slug,
   }
 }
 
@@ -128,7 +133,8 @@ export class FakeStoreService {
       const categoryNames: string[] = await response.json()
       return categoryNames.map(name => ({
         id: name.replace(/[^a-zA-Z0-9]/g, '').toLowerCase(),
-        name: name.charAt(0).toUpperCase() + name.slice(1)
+        name: name.charAt(0).toUpperCase() + name.slice(1),
+        slug: name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
       }))
     } catch (error) {
       console.error('Error fetching categories:', error)

@@ -77,6 +77,7 @@ export interface TokenResponse {
 export interface Category {
     id: string
     name: string
+    slug: string
 }
 
 export interface Product {
@@ -91,6 +92,7 @@ export interface Product {
   isVerified?: boolean
   isFavorite?: boolean
   description?: string
+  slug: string
   seller?: {
     name: string
     rating: number

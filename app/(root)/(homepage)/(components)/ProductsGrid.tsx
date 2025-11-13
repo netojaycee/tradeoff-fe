@@ -106,13 +106,13 @@ export default function ProductsGrid({
     <section className={className}>
       {title && (
         <div className="mb-8">
-          <h2 className="text-2xl lg:text-3xl font-bold text-gray-900 text-center">
+          <h2 className="text-2xl lg:text-3xl font-bold text-gray-900 text-left">
             {title}
           </h2>
         </div>
       )}
       
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
         {displayProducts.map((product) => (
           <ProductCard
             key={product.id}

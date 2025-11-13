@@ -1,1 +1,3 @@
 tradeoff login can later have keep me signed in to extend access to 30 days and referesh to 50 daays
+
+save product generate slug as name seperaye by dash with random 6 digit numberin front for url
