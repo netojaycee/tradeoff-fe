@@ -1,107 +1,134 @@
-"use client"
+"use client";
 
-import React, { useEffect, useState, useCallback } from 'react'
-import { ProductCard } from '@/components/local/ecom'
-import { Product } from '@/lib/types'
-import { FakeStoreService } from '@/lib/services/fakestore'
+import React from "react";
+import { ProductCard } from "@/components/local/ecom";
+import { Product } from "@/lib/types";
+import { Icon } from "@iconify/react";
+import { useGetProductsQuery } from "@/redux/api";
 
 interface ProductsGridProps {
-  products?: Product[]
-  title?: string
-  className?: string
-  limit?: number
+  title?: string;
+  className?: string;
+  limit?: number;
+  category?: string;
+  productSlug?: string;
 }
 
-export default function ProductsGrid({ 
-  products,
+export default function ProductsGrid({
   title = "Featured Products",
   className,
-  limit = 8
+  limit = 8,
+  category = "",
+  productSlug = "",
 }: ProductsGridProps) {
-  const [displayProducts, setDisplayProducts] = useState<Product[]>(products || [])
-  const [loading, setLoading] = useState(!products)
-  const [error, setError] = useState<string | null>(null)
+  // Fetch products using RTK Query
+  const {
+    data: productsData,
+    isLoading,
+    error,
+  } = useGetProductsQuery({
+    page: 1,
+    limit: limit,
+    category: category,
+  });
 
-  const fetchProducts = useCallback(async () => {
-    try {
-      setLoading(true)
-      setError(null)
-      const fetchedProducts = await FakeStoreService.getFeaturedProducts(limit)
-      setDisplayProducts(fetchedProducts)
-    } catch (err) {
-      setError('Failed to load products')
-      console.error('Error fetching products:', err)
-    } finally {
-      setLoading(false)
-    }
-  }, [limit])
+  // Extract products from response - handle both array and object responses
+  const productList = Array.isArray(productsData?.data)
+    ? productsData?.data
+    : [];
 
-  useEffect(() => {
-    if (!products) {
-      fetchProducts()
-    }
-  }, [products, fetchProducts])
+  // Filter out current product if productSlug is provided
+  const filteredProductList = productSlug
+    ? productList.filter((product: Product) => product.slug !== productSlug)
+    : productList;
 
-  const handleToggleFavorite = (productId: string) => {
-    // Update local state optimistically
-    setDisplayProducts(prev => 
-      prev.map(product => 
-        product.id === productId 
-          ? { ...product, isFavorite: !product.isFavorite }
-          : product
-      )
-    )
-    console.log('Toggle favorite for product:', productId)
-    // TODO: Implement API call to toggle favorite
-  }
+  const hasError = !!error;
 
-  const handleAddToCart = (productId: string) => {
-    console.log('Add to cart product:', productId)
-    // TODO: Implement API call to add to cart
-  }
+  // Create skeleton array while loading (8 items)
+  const displayItems = isLoading
+    ? Array.from({ length: limit }).map(() => null)
+    : filteredProductList;
 
-  if (loading) {
+  // Show error state
+  if (hasError && !isLoading) {
     return (
       <section className={className}>
         {title && (
           <div className="mb-8">
-            <h2 className="text-2xl lg:text-3xl font-bold text-gray-900 text-center">
+            <h2 className="text-2xl lg:text-3xl font-bold text-gray-900 text-left">
               {title}
             </h2>
           </div>
         )}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {Array.from({ length: limit }).map((_, index) => (
-            <div key={index} className="bg-gray-200 animate-pulse rounded-lg aspect-square"></div>
-          ))}
+        <div className="flex flex-col items-center justify-center py-16 px-4">
+          <div className="text-center max-w-md">
+            <div className="mb-4 flex justify-center">
+              <div className="p-4 rounded-full bg-red-50">
+                <Icon
+                  icon="material-symbols:error-outline"
+                  className="w-12 h-12 text-red-500"
+                />
+              </div>
+            </div>
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">
+              Oops! Something went wrong
+            </h3>
+            <p className="text-gray-600 mb-6">
+              We couldn&apos;t load the products at the moment. Please try again
+              later.
+            </p>
+            <button
+              onClick={() => window.location.reload()}
+              className="inline-flex items-center gap-2 px-6 py-2 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-lg transition-colors"
+            >
+              <Icon icon="material-symbols:refresh" className="w-5 h-5" />
+              Try Again
+            </button>
+          </div>
         </div>
       </section>
-    )
+    );
   }
 
-  if (error) {
+  // Show empty state (only if not loading, no error, and no products)
+  if (
+    !isLoading &&
+    !hasError &&
+    (!filteredProductList || filteredProductList.length === 0)
+  ) {
     return (
       <section className={className}>
         {title && (
           <div className="mb-8">
-            <h2 className="text-2xl lg:text-3xl font-bold text-gray-900 text-center">
+            <h2 className="text-2xl lg:text-3xl font-bold text-gray-900 text-left">
               {title}
             </h2>
           </div>
         )}
-        <div className="text-center py-12">
-          <p className="text-red-600 mb-4">{error}</p>
-          <button 
-            onClick={fetchProducts}
-            className="bg-[#38BDF8] hover:bg-[#0EA5E9] text-white px-6 py-2 rounded-sm transition-colors"
-          >
-            Try Again
-          </button>
+        <div className="flex flex-col items-center justify-center py-16 px-4">
+          <div className="text-center max-w-md">
+            <div className="mb-4 flex justify-center">
+              <div className="p-4 rounded-full bg-gray-100">
+                <Icon
+                  icon="material-symbols:shopping-cart-outline"
+                  className="w-12 h-12 text-gray-400"
+                />
+              </div>
+            </div>
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">
+              No Products Available
+            </h3>
+            <p className="text-gray-600">
+              We don't have any products to display right now. Please check back
+              soon!
+            </p>
+          </div>
         </div>
       </section>
-    )
+    );
   }
 
+  // Show products with loading skeletons mixed in
   return (
     <section className={className}>
       {title && (
@@ -111,17 +138,16 @@ export default function ProductsGrid({
           </h2>
         </div>
       )}
-      
-      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-        {displayProducts.map((product) => (
+
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        {displayItems.map((product: Product | null, index: number) => (
           <ProductCard
-            key={product.id}
-            product={product}
-            onToggleFavorite={handleToggleFavorite}
-            onAddToCart={handleAddToCart}
+            key={isLoading ? `skeleton-${index}` : product?.id || product?._id}
+            product={product || undefined}
+            isLoading={product === null}
           />
         ))}
       </div>
     </section>
-  )
+  );
 }

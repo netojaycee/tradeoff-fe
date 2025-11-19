@@ -21,7 +21,7 @@ export default function PopularBrands() {
         {brands.map((brand, idx) => (
           <div
             key={brand.id}
-            className={`relative rounded-md overflow-hidden border border-gray-200 bg-white ${
+            className={`relative rounded-md overflow-hidden border border-[#E5E5E5] bg-white ${
               brand.id === "more" ? "flex items-center justify-center" : ""
             }`}
           >

@@ -1,58 +1,78 @@
 "use client";
 
-import React, { useState } from "react";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useDispatch, useSelector } from "react-redux";
+import { RootState } from "@/redux/store";
+import { addToCart, updateQuantity } from "@/redux/slices/cartSlice";
+import { toggleFavorite } from "@/redux/slices/favoritesSlice";
 import Image from "next/image";
 import { Icon } from "@iconify/react";
-import { cn } from "@/lib/utils";
+import { cn, formatPrice } from "@/lib/utils";
 import { CustomButton } from "@/components/local/custom/CustomButton";
 import {
   Carousel,
   CarouselContent,
   CarouselDots,
   CarouselItem,
-  CarouselNext,
-  CarouselPrevious,
 } from "@/components/ui/carousel";
 import { Product } from "@/lib/types";
 import Link from "next/link";
+import AddedToCartModal from "./AddedToCartModal";
+import { CustomModal } from "../custom/CustomModal";
+import ProductCardSkeleton from "./ProductCardSkeleton";
 
 interface ProductCardProps {
-  product: Product;
-  onToggleFavorite?: (productId: string) => void;
-  onAddToCart?: (productId: string) => void;
+  product?: Product;
   className?: string;
+  isLoading?: boolean;
 }
 
-export default function ProductCard({
-  product,
-  onToggleFavorite,
-  onAddToCart,
-  className,
-}: ProductCardProps) {
-  const [isFavorite, setIsFavorite] = useState(product.isFavorite || false);
+export default function ProductCard({ product, className, isLoading = false }: ProductCardProps) {
+  if (isLoading || !product) {
+    return <ProductCardSkeleton />;
+  }
+  const dispatch = useDispatch();
+  const [openedAddedToCart, setOpenedAddedToCart] = useState(false);
+  const favorites = useSelector((state: RootState) => state.favorites.items);
+  const cartItems = useSelector((state: RootState) => state.cart.items);
   const [isAddingToCart, setIsAddingToCart] = useState(false);
+  const router = useRouter();
+
+  // Handle both id and _id from backend
+  const productId = product.id || product._id || "";
+  const productTitle = product.title || "";
+  const productPrice = product.sellingPrice || product.originalPrice || 0;
+  const originalPrice = product.originalPrice;
+  const discount = originalPrice && productPrice ? Math.round(((originalPrice - productPrice) / originalPrice) * 100) : 0;
+
+  const isFavorite = favorites.includes(productId);
 
   const handleToggleFavorite = () => {
-    setIsFavorite(!isFavorite);
-    onToggleFavorite?.(product.id);
+    dispatch(toggleFavorite(productId));
   };
 
   const handleAddToCart = async () => {
     setIsAddingToCart(true);
-    onAddToCart?.(product.id);
-    // Simulate API call delay
+    // Check if already in cart
+    const existing = cartItems.find((item) => item.id === productId);
+    if (!existing) {
+      dispatch(
+        addToCart({
+          id: productId,
+          name: productTitle,
+          price: productPrice,
+          image: product.images[0],
+          quantity: 1,
+        })
+      );
+    } else {
+      // Optionally, increase quantity or show feedback
+      dispatch(updateQuantity({ id: productId, quantity: existing.quantity + 1 }));
+    }
+    // UI feedback
     setTimeout(() => setIsAddingToCart(false), 500);
-  };
-
-  const formatPrice = (price: number): string => {
-    return new Intl.NumberFormat("en-NG", {
-      style: "currency",
-      currency: "NGN",
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    })
-      .format(price)
-      .replace("NGN", "₦"); // Replace NGN with ₦ symbol
+    setOpenedAddedToCart(true);
   };
 
   return (
@@ -65,7 +85,7 @@ export default function ProductCard({
       {/* Image Carousel Section */}
       <div className="relative aspect-square bg-[#F5F5F5]">
         {/* Discount Badge */}
-        {product.discount && (
+        {discount > 0 && (
           <div className="absolute top-3 left-0 z-20">
             <div
               className="inline-block bg-red-500 text-white py-0.5 pr-5 pl-3 text-sm font-medium"
@@ -74,7 +94,7 @@ export default function ProductCard({
                   "polygon(0 0, 100% 0, 80% 50%, 80% 50%, 100% 100%, 0 100%)",
               }}
             >
-              -{product.discount}%
+              -{discount}%
             </div>
           </div>
         )}
@@ -83,6 +103,7 @@ export default function ProductCard({
         <button
           onClick={handleToggleFavorite}
           className="absolute top-3 right-3 z-20 p-2 bg-white/80 backdrop-blur-sm rounded-full hover:bg-white transition-colors duration-200"
+          aria-label={isFavorite ? "Remove from favorites" : "Add to favorites"}
         >
           <Icon
             icon={isFavorite ? "ph:heart-fill" : "ph:heart"}
@@ -107,7 +128,7 @@ export default function ProductCard({
                   <div className="relative w-full h-0 pb-[88%] md:pb-[92%] overflow-hidden">
                     <Image
                       src={image}
-                      alt={`${product.name} - Image ${index + 1}`}
+                      alt={`${productTitle} - Image ${index + 1}`}
                       fill
                       className="object-contain"
                       sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
@@ -124,10 +145,8 @@ export default function ProductCard({
           </div>
         </Carousel>
 
-        
-
         {/* Verified Badge */}
-        {product.isVerified && (
+        {product.isVerifiedSeller && (
           <div className="absolute bottom-0 left-2 z-20">
             <div className="inline-flex items-center gap-1 px-1 border border-[#737373] rounded text-xs font-normal">
               <span>Verified</span>
@@ -144,8 +163,11 @@ export default function ProductCard({
       <div className="p-2 space-y-1 relative">
         {/* Product Name */}
         <h3 className="font-semibold text-gray-900 text-base md:text-lg leading-tight line-clamp-1">
-          <Link href={`/${product.category.slug}/${product.slug}`} className="hover:underline">
-            {product.name}
+          <Link
+            href={`/${product.category.slug}/${product.slug}`}
+            className="hover:underline"
+          >
+            {productTitle}
           </Link>
         </h3>
 
@@ -161,11 +183,11 @@ export default function ProductCard({
         <div className="flex items-center gap-2 justify-between">
           <div>
             <span className="font-bold text-base md:text-xl text-[#555555]">
-              {formatPrice(product.price)}
+              {formatPrice(productPrice)}
             </span>
-            {/* {product.originalPrice && (
-            <span className="text-gray-500 line-through text-sm">
-              {formatPrice(product.originalPrice)}
+            {/* {originalPrice && originalPrice > productPrice && (
+            <span className="text-gray-500 line-through text-sm ml-2">
+              {formatPrice(originalPrice)}
             </span>
           )} */}
           </div>
@@ -185,6 +207,22 @@ export default function ProductCard({
           </div>
         </div>
       </div>
+
+      <CustomModal open={openedAddedToCart} onOpenChange={setOpenedAddedToCart}>
+        <AddedToCartModal
+          product={{
+            ...product,
+            name: productTitle,
+            price: productPrice,
+          }}
+          onCheckout={() => {
+            setOpenedAddedToCart(false);
+            router.push("/checkout");
+          }}
+          onContinue={() => setOpenedAddedToCart(false)}
+          onClose={() => setOpenedAddedToCart(false)}
+        />
+      </CustomModal>
     </div>
   );
 }

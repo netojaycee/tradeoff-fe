@@ -284,9 +284,9 @@ export default function Register() {
 
       {/* OR Divider */}
       <div className="my-6 flex items-center">
-        <div className="flex-1 border-t border-gray-200"></div>
+        <div className="flex-1 border-t border-[#E5E5E5]"></div>
         <span className="px-4 text-gray-500 text-sm">OR</span>
-        <div className="flex-1 border-t border-gray-200"></div>
+        <div className="flex-1 border-t border-[#E5E5E5]"></div>
       </div>
 
       {/* Google Sign Up Button */}

@@ -1,3 +1,33 @@
 tradeoff login can later have keep me signed in to extend access to 30 days and referesh to 50 daays
 
 save product generate slug as name seperaye by dash with random 6 digit numberin front for url
+
+added t cart we ssee this 
+<CustomModal trigger={<p>hello</p>}>
+                <AddedToCartModal
+                  product={product}
+                  onCheckout={() => {
+                    setOpen(false);
+                    // Redirect to checkout
+                    window.location.href = "/checkout";
+                  }}
+                  onContinue={() => setOpen(false)}
+                  onClose={() => setOpen(false)}
+                />
+              </CustomModal>
+
+
+              dynamic seo by page
+
+
+
+              
+ ✓ Starting...
+ ⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+ ✓ Ready in 2.5s
+ ⚠ Cross origin request detected from 192.168.1.135 to /_next/* resource. In a future major version of Next.js, you will need to explicitly configure "allowedDevOrigins" in next.config to allow this.
+Read more: https://nextjs.org/docs/app/api-reference/config/next-config-js/allowedDevOrigins
+ ○ Compiling / ...
+redux-persist failed to create sync storage. falling back to noop storage.
+ GET / 200 in 5.9s (compile: 5.1s, proxy.ts: 9ms, render: 811ms)
+ GET /electronics-accessories/wd-4tb-gaming-drive-works-with-playstation-4-portable-external-hard-drive-649876 200 in 6.0s (compile: 5.8s, proxy.ts: 7ms, render: 181ms)

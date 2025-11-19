@@ -178,7 +178,7 @@ const CustomInput = React.forwardRef<HTMLInputElement, CustomInputProps>(
         <ShadcnInput
           ref={ref}
           type={inputType}
-          className={cn(getPadding(), className)}
+          className={cn(getPadding(), "rounded bg-transparent", className)}
           {...props}
         />
 

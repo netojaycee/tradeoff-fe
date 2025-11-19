@@ -56,27 +56,25 @@ export default function Confirmation({
   }
 
   return (
-    <div className="max-w-md mx-auto bg-white rounded-lg p-6">
+    <div className="max-w-md mx-auto">
       {/* Success Icon */}
       <div className="flex justify-center mb-6">
-        <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
           <Icon 
-            icon="material-symbols:check-circle-outline" 
-            className="w-10 h-10 text-green-600"
+            icon="mdi:check-circle-outline" 
+            className="w-10 h-10 text-green-600 font-normal"
           />
-        </div>
       </div>
 
       {/* Success Message */}
-      <div className="text-center mb-8">
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">Order Successful!</h1>
-        <p className="text-gray-600">
+      <div className="text-center mb-5">
+        <h1 className="text-2xl font-semibold text-gray-900 mb-2">Order Successful!</h1>
+        <p className="text-gray-600 text-xs">
           Your order is being processed, we&apos;ll notify you once it&apos;s about to be on its way...
         </p>
       </div>
 
       {/* Order Details */}
-      <div className="bg-gray-50 rounded-lg p-4 mb-6">
+      <div className="bg-[#E8E8E8] rounded p-4 mb-6">
         <div className="space-y-3">
           <div className="flex justify-between items-center">
             <span className="text-sm text-gray-600">Order ID</span>
@@ -117,7 +115,7 @@ export default function Confirmation({
             <span className="text-sm font-medium text-gray-900">{orderDetails.paymentMethod}</span>
           </div>
           
-          <div className="flex justify-between items-center pt-2 border-t border-gray-200">
+          <div className="flex justify-between items-center pt-2 border-t border-[#E5E5E5]">
             <span className="text-sm text-gray-600">Amount</span>
             <span className="text-lg font-bold text-gray-900">{orderDetails.amount}</span>
           </div>

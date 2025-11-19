@@ -115,6 +115,41 @@ export type ResetPasswordCredentials = z.infer<typeof resetPasswordSchema>;
 export type RefreshTokenCredentials = z.infer<typeof refreshTokenSchema>;
 export type CheckoutCredentials = z.infer<typeof checkoutSchema>;
 
+// Product schema for creating/updating products
+export const productSchema = z.object({
+    name: z.string().min(1, 'Product name is required').max(200, 'Product name must not exceed 200 characters'),
+    categoryId: z.string().min(1, 'Category is required'),
+    model: z.string().optional(),
+    condition: z.enum(['New', 'Used', 'Like New'], {
+        message: 'Condition must be New, Used, or Like New'
+    }),
+    size: z.string().optional(),
+    gender: z.enum(['Male', 'Female', 'Unisex'], {
+        message: 'Gender must be Male, Female, or Unisex'
+    }).optional(),
+    quantity: z.number().int('Quantity must be a whole number').min(1, 'Quantity must be at least 1'),
+    price: z.number().min(0, 'Price must be a positive number'),
+    originalPrice: z.number().min(0, 'Original price must be a positive number').optional(),
+    description: z.string().min(10, 'Description must be at least 10 characters').max(2000, 'Description must not exceed 2000 characters'),
+    images: z.array(z.string()).min(1, 'At least one image is required').max(10, 'Maximum 10 images allowed'),
+});
+
+// Category schema
+export const categorySchema = z.object({
+    name: z.string().min(1, 'Category name is required').max(100, 'Category name must not exceed 100 characters'),
+});
+
+// Subcategory schema
+export const subcategorySchema = z.object({
+    name: z.string().min(1, 'Subcategory name is required').max(100, 'Subcategory name must not exceed 100 characters'),
+    categoryId: z.string().min(1, 'Category ID is required'),
+});
+
+// Export types
+export type ProductFormData = z.infer<typeof productSchema>;
+export type CategoryFormData = z.infer<typeof categorySchema>;
+export type SubcategoryFormData = z.infer<typeof subcategorySchema>;
+
 // Legacy type exports for compatibility (deprecated)
 export type VerifyCredentials = VerifyEmailCredentials;
 export type SendOtpCredentials = ResendVerificationCredentials;

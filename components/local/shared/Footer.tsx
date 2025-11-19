@@ -2,6 +2,10 @@
 
 import React from "react";
 import Link from "next/link";
+import { SellerPolicyModal } from "@/components/local/legal/SellerPolicyModal";
+import { PrivacyPolicyModal } from "@/components/local/legal/PrivacyPolicyModal";
+import { TermsAndConditionsModal } from "@/components/local/legal/TermsAndConditionsModal";
+import { CookiesPolicyModal } from "@/components/local/legal/CookiesPolicyModal";
 import { Icon } from "@iconify/react";
 import { CustomInput } from "../custom/CustomInput";
 import Image from "next/image";
@@ -70,12 +74,24 @@ const Footer: React.FC = () => {
     { name: "FAQs", href: "/faq" }
   ];
 
-  // Legal links
-  const legalLinks: FooterLink[] = [
-    { name: "Seller policy", href: "/seller-policy" },
-    { name: "Privacy policy", href: "/privacy" },
-    { name: "Terms & conditions", href: "/terms" },
-    { name: "Cookies", href: "/cookies" }
+  // Legal links as modal triggers
+  const legalModals = [
+    {
+      name: "Seller policy",
+      component: SellerPolicyModal,
+    },
+    {
+      name: "Privacy policy",
+      component: PrivacyPolicyModal,
+    },
+    {
+      name: "Terms & conditions",
+      component: TermsAndConditionsModal,
+    },
+    {
+      name: "Cookies",
+      component: CookiesPolicyModal,
+    },
   ];
 
   return (
@@ -179,16 +195,20 @@ const Footer: React.FC = () => {
             </p>
           </div>
 
-          {/* Row 5: Legal Links */}
+          {/* Row 5: Legal Links as Modals */}
           <div className="flex gap-6 text-sm">
-            {legalLinks.map((link, index) => (
-              <Link
+            {legalModals.map(({ name, component: ModalComponent }, index) => (
+              <ModalComponent
                 key={index}
-                href={link.href}
-                className="text-gray-300 hover:text-white transition-colors"
-              >
-                {link.name}
-              </Link>
+                trigger={
+                  <button
+                    className="text-gray-300 hover:text-white transition-colors underline underline-offset-2 bg-transparent border-0 p-0 m-0 cursor-pointer"
+                    type="button"
+                  >
+                    {name}
+                  </button>
+                }
+              />
             ))}
           </div>
 
@@ -319,16 +339,20 @@ const Footer: React.FC = () => {
             </p>
           </div>
 
-          {/* Legal Links */}
+          {/* Legal Links as Modals */}
           <div className="flex flex-wrap gap-4 text-sm">
-            {legalLinks.map((link, index) => (
-              <Link
+            {legalModals.map(({ name, component: ModalComponent }, index) => (
+              <ModalComponent
                 key={index}
-                href={link.href}
-                className="text-gray-300 hover:text-white transition-colors"
-              >
-                {link.name}
-              </Link>
+                trigger={
+                  <button
+                    className="text-gray-300 hover:text-white transition-colors underline underline-offset-2 bg-transparent border-0 p-0 m-0 cursor-pointer"
+                    type="button"
+                  >
+                    {name}
+                  </button>
+                }
+              />
             ))}
           </div>
 

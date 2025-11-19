@@ -75,27 +75,82 @@ export interface TokenResponse {
 
 
 export interface Category {
-    id: string
+    _id?: string
+    id?: string
     name: string
     slug: string
+    description?: string
+}
+
+export interface Subcategory {
+    _id?: string
+    id?: string
+    name: string
+    slug: string
+    description?: string
+}
+
+export interface Seller {
+    id: string
+    name: string
+    rating?: number
+    verified: boolean
+}
+
+export interface Shipping {
+    domestic?: number
+    international?: number
+    free?: boolean
 }
 
 export interface Product {
-  id: string
-  name: string
-  category: Category
-  condition: 'New' | 'Used' | 'Like New'
-  price: number
-  originalPrice?: number
-  discount?: number
-  images: string[]
-  isVerified?: boolean
-  isFavorite?: boolean
-  description?: string
-  slug: string
-  seller?: {
-    name: string
-    rating: number
-    verified: boolean
-  }
+    id?: string
+    _id?: string
+    title: string
+    description: string
+    brand?: string
+    category: Category
+    subCategory?: Subcategory | null
+    gender?: string
+    sellerId: string
+    sellerName?: string
+    isVerifiedSeller?: boolean
+    originalPrice: number
+    sellingPrice: number
+    retailPrice?: number | null
+    currency?: string
+    negotiable?: boolean
+    condition: string
+    size?: string | null
+    sizeType?: string | null
+    materials?: string[]
+    color?: string
+    images: string[]
+    authenticationStatus?: string
+    slug: string
+    status?: string
+    featured?: boolean
+    promoted?: boolean
+    quantity: number
+    sold?: boolean
+    shipping?: Shipping
+    shippingMethods?: string[]
+    views?: number
+    likes?: number
+    saves?: number
+    shares?: number
+    inquiries?: number
+    averageRating?: number
+    totalReviews?: number
+    keywords?: string[]
+    seoTitle?: string
+    seoDescription?: string
+    location?: {
+        city: string
+        state: string
+        country: string
+    }
+    isFavorite?: boolean
+    createdAt: string
+    updatedAt: string
 }

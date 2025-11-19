@@ -1,4 +1,5 @@
 import { Footer } from "@/components/local";
+import Breadcrumbs from "@/components/local/shared/Breadcrumbs";
 import {Header} from "@/components/local/shared/Header";
 
 export default function RootLayout({
@@ -7,9 +8,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <div className="">
+    <div className="max-w-7xl mx-auto">
       <Header />
-      <main className="min-h-screen">{children}</main>
+      <Breadcrumbs />
+      <main className="min-h-screen bg-[#ffffff]">{children}</main>
       <Footer />
     </div>
   );

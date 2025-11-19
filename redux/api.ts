@@ -8,23 +8,31 @@ import {
     ForgotPasswordCredentials,
     ResetPasswordCredentials,
     RefreshTokenCredentials,
-    CheckoutCredentials
+    CheckoutCredentials,
+    ProductFormData,
+    CategoryFormData,
+    SubcategoryFormData
 } from "@/lib/schema";
 import { clearUserInfo, setUserInfo, setTokens } from "./slices/userSlice";
 import { 
     TradeOffApiResponse, 
     AuthData, 
     TokenResponse, 
-    User 
+    User,
+    Product,
+    Category,
+    Subcategory
 } from "@/lib/types";
 import { RootState } from "./store";
 import { setAuthCookies, clearAuthCookies } from "@/lib/utils/cookies";
 
 
-const BASE_URL =
-    process.env.NODE_ENV === "production"
-        ? process.env.BASE_URL || "https://api.tradeoff.com"
-        : `http://localhost:3050`;
+// const BASE_URL =
+//     process.env.NODE_ENV === "production"
+//         ? process.env.API_BASE_URL || "https://api.tradeoff.com"
+//         : `http://localhost:3050`;
+
+const BASE_URL = process.env.API_BASE_URL || "http://192.168.1.135:3050";
 
 // Helper functions for token management
 const getTokenFromStorage = (): string | null => {
@@ -159,6 +167,32 @@ export const api = createApi({
     baseQuery: baseQueryWithReauth,
     tagTypes: ["User", "Product", "Category"],
     endpoints: (builder) => ({
+            // --- CART & FAVORITES API PLACEHOLDERS ---
+
+            // Cart Endpoints (placeholders, not enabled)
+            // getCart: builder.query<TradeOffApiResponse<CartItem[]>, void>({
+            //   query: () => ({ url: "/cart" }),
+            // }),
+            // addToCart: builder.mutation<TradeOffApiResponse, CartItem>({
+            //   query: (item) => ({ url: "/cart", method: "POST", body: item }),
+            // }),
+            // updateCartItem: builder.mutation<TradeOffApiResponse, { id: string; quantity: number }>({
+            //   query: ({ id, quantity }) => ({ url: `/cart/${id}`, method: "PATCH", body: { quantity } }),
+            // }),
+            // removeFromCart: builder.mutation<TradeOffApiResponse, string>({
+            //   query: (id) => ({ url: `/cart/${id}`, method: "DELETE" }),
+            // }),
+
+            // Favorites Endpoints (placeholders, not enabled)
+            // getFavorites: builder.query<TradeOffApiResponse<string[]>, void>({
+            //   query: () => ({ url: "/favorites" }),
+            // }),
+            // addFavorite: builder.mutation<TradeOffApiResponse, string>({
+            //   query: (productId) => ({ url: "/favorites", method: "POST", body: { productId } }),
+            // }),
+            // removeFavorite: builder.mutation<TradeOffApiResponse, string>({
+            //   query: (productId) => ({ url: `/favorites/${productId}`, method: "DELETE" }),
+            // }),
         // AUTHENTICATION ENDPOINTS - TradeOff API
 
         // 1. Register User
@@ -321,6 +355,160 @@ export const api = createApi({
             },
         }),
 
+        // PRODUCT ENDPOINTS
+        createProduct: builder.mutation<TradeOffApiResponse<Product>, ProductFormData>({
+            query: (data) => ({
+                url: "/products",
+                method: "POST",
+                body: data,
+            }),
+            invalidatesTags: ["Product"],
+        }),
+
+        getProducts: builder.query<{ success: boolean; message: string; data: Product[]; meta: { total: number; page: number; limit: number }; timestamp: string }, { page?: number; limit?: number; category?: string; search?: string; condition?: string; brand?: string; minPrice?: number; maxPrice?: number; sortBy?: string; status?: string }>({
+            query: ({ page = 1, limit = 20, category, search, condition, brand, minPrice, maxPrice, sortBy = 'newest', status = 'active' }) => {
+                const params = new URLSearchParams();
+                params.append('page', page.toString());
+                params.append('limit', limit.toString());
+                if (category) params.append('category', category);
+                if (search) params.append('search', search);
+                if (condition) params.append('condition', condition);
+                if (brand) params.append('brand', brand);
+                if (minPrice !== undefined) params.append('minPrice', minPrice.toString());
+                if (maxPrice !== undefined) params.append('maxPrice', maxPrice.toString());
+                if (sortBy) params.append('sortBy', sortBy);
+                if (status) params.append('status', status);
+                return { url: `/products?${params.toString()}` };
+            },
+            providesTags: ["Product"],
+        }),
+
+        getProductById: builder.query<{ success: boolean; message: string; data: Product; timestamp: string }, string>({
+            query: (id) => ({ url: `/products/${id}` }),
+            providesTags: ["Product"],
+        }),
+
+        getProductBySlug: builder.query<{ success: boolean; message: string; data: Product; timestamp: string }, string>({
+            query: (slug) => ({ url: `/products/slug/${slug}` }),
+            providesTags: ["Product"],
+        }),
+
+        getUserProducts: builder.query<TradeOffApiResponse<{ products: Product[]; total: number }>, { page?: number; limit?: number }>({
+            query: ({ page = 1, limit = 20 }) => {
+                const params = new URLSearchParams();
+                params.append('page', page.toString());
+                params.append('limit', limit.toString());
+                return { url: `/products/user/my-products?${params.toString()}` };
+            },
+            providesTags: ["Product"],
+        }),
+
+        updateProduct: builder.mutation<TradeOffApiResponse<Product>, { id: string; data: Partial<ProductFormData> }>({
+            query: ({ id, data }) => ({
+                url: `/products/${id}`,
+                method: "PATCH",
+                body: data,
+            }),
+            invalidatesTags: ["Product"],
+        }),
+
+        deleteProduct: builder.mutation<TradeOffApiResponse<void>, string>({
+            query: (id) => ({
+                url: `/products/${id}`,
+                method: "DELETE",
+            }),
+            invalidatesTags: ["Product"],
+        }),
+
+        // CATEGORY ENDPOINTS
+        getCategories: builder.query<{ success: boolean; message: string; data: Category[]; meta: { total: number; page: number; limit: number }; timestamp: string }, void>({
+            query: () => ({ url: "/categories" }),
+            providesTags: ["Category"],
+        }),
+
+        getCategoryById: builder.query<{ success: boolean; message: string; data: Category; timestamp: string }, string>({
+            query: (id) => ({ url: `/categories/${id}` }),
+            providesTags: ["Category"],
+        }),
+
+        getCategoryBySlug: builder.query<{ success: boolean; message: string; data: Category; timestamp: string }, string>({
+            query: (slug) => ({ url: `/categories/slug/${slug}` }),
+            providesTags: ["Category"],
+        }),
+
+        createCategory: builder.mutation<TradeOffApiResponse<Category>, CategoryFormData>({
+            query: (data) => ({
+                url: "/categories",
+                method: "POST",
+                body: data,
+            }),
+            invalidatesTags: ["Category"],
+        }),
+
+        editCategory: builder.mutation<TradeOffApiResponse<Category>, { id: string; data: Partial<CategoryFormData> }>({
+            query: ({ id, data }) => ({
+                url: `/categories/${id}`,
+                method: "PATCH",
+                body: data,
+            }),
+            invalidatesTags: ["Category"],
+        }),
+
+        deleteCategory: builder.mutation<TradeOffApiResponse<void>, string>({
+            query: (id) => ({
+                url: `/categories/${id}`,
+                method: "DELETE",
+            }),
+            invalidatesTags: ["Category"],
+        }),
+
+        // SUBCATEGORY ENDPOINTS
+        getSubcategories: builder.query<{ success: boolean; message: string; data: Subcategory[]; meta: { total: number; page: number; limit: number }; timestamp: string }, { categoryId?: string }>({
+            query: ({ categoryId }) => {
+                if (categoryId) {
+                    return { url: `/subcategories?categoryId=${categoryId}` };
+                }
+                return { url: "/subcategories" };
+            },
+            providesTags: ["Category"],
+        }),
+
+        getSubcategoryById: builder.query<{ success: boolean; message: string; data: Subcategory; timestamp: string }, string>({
+            query: (id) => ({ url: `/subcategories/${id}` }),
+            providesTags: ["Category"],
+        }),
+
+        getSubcategoryBySlug: builder.query<{ success: boolean; message: string; data: Subcategory; timestamp: string }, string>({
+            query: (slug) => ({ url: `/subcategories/slug/${slug}` }),
+            providesTags: ["Category"],
+        }),
+
+        createSubcategory: builder.mutation<TradeOffApiResponse<Subcategory>, SubcategoryFormData>({
+            query: (data) => ({
+                url: "/subcategories",
+                method: "POST",
+                body: data,
+            }),
+            invalidatesTags: ["Category"],
+        }),
+
+        editSubcategory: builder.mutation<TradeOffApiResponse<Subcategory>, { id: string; data: Partial<SubcategoryFormData> }>({
+            query: ({ id, data }) => ({
+                url: `/subcategories/${id}`,
+                method: "PATCH",
+                body: data,
+            }),
+            invalidatesTags: ["Category"],
+        }),
+
+        deleteSubcategory: builder.mutation<TradeOffApiResponse<void>, string>({
+            query: (id) => ({
+                url: `/subcategories/${id}`,
+                method: "DELETE",
+            }),
+            invalidatesTags: ["Category"],
+        }),
+
         // CHECKOUT ENDPOINT (keeping existing functionality)
         checkout: builder.mutation<
             { authorization_url: string, access_code: string, reference: string },
@@ -358,6 +546,17 @@ export const api = createApi({
 
 // Export hooks with TypeScript types
 // Export hooks for usage in functional components
+// Cart/Favorites API hooks (commented out, enable when backend is ready)
+// export const {
+//   useGetCartQuery,
+//   useAddToCartMutation,
+//   useUpdateCartItemMutation,
+//   useRemoveFromCartMutation,
+//   useGetFavoritesQuery,
+//   useAddFavoriteMutation,
+//   useRemoveFavoriteMutation,
+// } = api;
+
 export const {
     // Auth Mutations
     useRegisterMutation,
@@ -373,26 +572,33 @@ export const {
     // Auth Queries
     useGetProfileQuery,
     
+    // Product Mutations & Queries
+    useCreateProductMutation,
+    useGetProductsQuery,
+    useGetProductByIdQuery,
+    useGetProductBySlugQuery,
+    useGetUserProductsQuery,
+    useUpdateProductMutation,
+    useDeleteProductMutation,
+    
+    // Category Mutations & Queries
+    useGetCategoriesQuery,
+    useGetCategoryByIdQuery,
+    useGetCategoryBySlugQuery,
+    useCreateCategoryMutation,
+    useEditCategoryMutation,
+    useDeleteCategoryMutation,
+    
+    // Subcategory Mutations & Queries
+    useGetSubcategoriesQuery,
+    useGetSubcategoryByIdQuery,
+    useGetSubcategoryBySlugQuery,
+    useCreateSubcategoryMutation,
+    useEditSubcategoryMutation,
+    useDeleteSubcategoryMutation,
+    
     // Checkout
     useCheckoutMutation,
-    
-    // Keep these commented out for now
-    // useGetCategoriesQuery,
-    // useGetCategoryByIdQuery,
-    // useAddCategoryMutation,
-    // useUpdateCategoryMutation,
-    // useDeleteCategoryMutation,
-    // useGetProductsQuery,
-    // useGetProductByIdQuery,
-    // useAddProductMutation,
-    // useUpdateProductMutation,
-    // useDeleteProductMutation,
-    // useGetPackagesQuery,
-    // useGetPackageByIdQuery,
-    // useAddPackageMutation,
-    // useUpdatePackageMutation,
-    // useDeletePackageMutation,
-    // useGetProductsByCategoryQuery,
 } = api;
 
 export type AppApi = typeof api;

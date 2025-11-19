@@ -1,101 +1,114 @@
-"use client"
+"use client";
 
-import React, { useState } from 'react'
-import Link from 'next/link'
-import { Icon } from '@iconify/react'
-import { CustomInput } from '../custom/CustomInput'
-import { CustomButton } from '../custom/CustomButton'
-import { Logo } from './Logo'
+import React, { useState } from "react";
+import Link from "next/link";
+import { Icon } from "@iconify/react";
+import { CustomInput } from "../custom/CustomInput";
+import { CustomButton } from "../custom/CustomButton";
+import { Logo } from "./Logo";
+import { useGetCategoriesQuery } from "@/redux/api";
+import { Category } from "@/lib/types";
 
 interface NavigationItem {
-  name: string
-  href: string
-  hasDropdown: boolean
+  name: string;
+  href: string;
+  hasDropdown: boolean;
 }
 
 interface HeaderAction {
-  type: 'link' | 'icon'
-  label?: string
-  icon?: string
-  href: string
-  className: string
-  showOnMobile: boolean
-  hasNotification?: boolean
-  notificationCount?: number
+  type: "link" | "icon";
+  label?: string;
+  icon?: string;
+  href: string;
+  className: string;
+  showOnMobile: boolean;
+  hasNotification?: boolean;
+  notificationCount?: number;
 }
 
 const Header: React.FC = () => {
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  // Navigation items
-  const navigationItems: NavigationItem[] = [
-    { name: 'New Arrivals', href: '/new-arrivals', hasDropdown: true },
-    { name: 'Designers', href: '/designers', hasDropdown: true },
-    { name: 'Bags', href: '/bags', hasDropdown: true },
-    { name: 'Accessories', href: '/accessories', hasDropdown: true },
-    { name: 'Shoes', href: '/shoes', hasDropdown: true },
-    { name: 'Jewellries', href: '/jewellries', hasDropdown: true },
-    { name: 'Watches', href: '/watches', hasDropdown: true },
-    { name: 'Sale', href: '/sale', hasDropdown: true },
-  ]
+  // Fetch categories from RTK Query
+  const { data: categoriesData } = useGetCategoriesQuery();
+  const allCategories = categoriesData?.data || [];
+  
+  // Limit to 8 categories for UI
+  const navigationItems: NavigationItem[] = allCategories.slice(0, 8).map((category:  Category) => ({
+    name: category.name,
+    href: "/",
+    hasDropdown: true,
+  }));
 
+  const [open, setOpen] = useState(false);
+
+  const product = {
+    name: "LV Remix Boat Shoe",
+    description:
+      "A sleek, easy-to-style boat shoe that blends classic design with everyday comfort and street-ready flair.",
+    price: 24000,
+    image: "/shoe.png",
+  };
   // Header action items
   const headerActions: HeaderAction[] = [
-    
     {
-      type: 'link',
-      label: 'Sell with us',
-      href: '/sell',
-      className: 'text-gray-800 hover:text-black underline transition-colors text-sm font-semibold',
-      showOnMobile: true
-    },
-     {
-      type: 'icon',
-      icon: 'material-symbols:search',
-      href: '/search',
-      className: 'relative hover:scale-110 transition-transform',
+      type: "link",
+      label: "Sell with us",
+      href: "/sell",
+      className:
+        "text-gray-800 hover:text-black underline transition-colors text-sm font-semibold",
       showOnMobile: true,
-      hasNotification: false
     },
     {
-      type: 'icon',
-      icon: 'material-symbols:favorite-outline',
-      href: '/wishlist',
-      className: 'relative hover:scale-110 transition-transform',
+      type: "icon",
+      icon: "material-symbols:search",
+      href: "/search",
+      className: "relative hover:scale-110 transition-transform",
       showOnMobile: true,
-      hasNotification: false
+      hasNotification: false,
     },
     {
-      type: 'icon',
-      icon: 'material-symbols:shopping-bag-outline',
-      href: '/cart',
-      className: 'relative hover:scale-110 transition-transform',
+      type: "icon",
+      icon: "material-symbols:favorite-outline",
+      href: "/wishlist",
+      className: "relative hover:scale-110 transition-transform",
+      showOnMobile: true,
+      hasNotification: false,
+    },
+    {
+      type: "icon",
+      icon: "material-symbols:shopping-bag-outline",
+      href: "/cart",
+      className: "relative hover:scale-110 transition-transform",
       showOnMobile: true,
       hasNotification: true,
-      notificationCount: 2
-    }
-  ]
+      notificationCount: 2,
+    },
+  ];
 
   return (
     <header className="bg-white shadow-sm sticky top-0 z-50">
       {/* Mobile Header */}
       <div className="md:hidden flex items-center justify-between px-4 py-3 ">
         {/* Logo */}
-                       <Logo variant='dark' />
+        <Logo variant="dark" />
 
         {/* Mobile Actions */}
         <div className="flex items-center space-x-3">
           {headerActions
-            .filter(action => action.showOnMobile)
+            .filter((action) => action.showOnMobile)
             .map((action, index) => (
               <div key={index}>
-                {action.type === 'link' ? (
+                {action.type === "link" ? (
                   <Link href={action.href} className={action.className}>
                     {action.label}
                   </Link>
                 ) : (
                   <Link href={action.href} className={action.className}>
-                    <Icon icon={action.icon!} className="w-6 h-6 text-gray-700" />
+                    <Icon
+                      icon={action.icon!}
+                      className="w-6 h-6 text-gray-700"
+                    />
                     {action.hasNotification && action.notificationCount && (
                       <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
                         {action.notificationCount}
@@ -109,7 +122,10 @@ const Header: React.FC = () => {
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
             className="p-1"
           >
-            <Icon icon="material-symbols:menu" className="w-6 h-6 text-gray-700" />
+            <Icon
+              icon="material-symbols:menu"
+              className="w-6 h-6 text-gray-700"
+            />
           </button>
         </div>
       </div>
@@ -117,10 +133,9 @@ const Header: React.FC = () => {
       {/* Desktop Header */}
       <div className="hidden md:block">
         {/* Main Header */}
-        <div className="flex items-center justify-between px-20 py-4">
+        <div className="flex items-center justify-between px-16 py-4">
           {/* Logo */}
-                       <Logo variant='dark' />
-
+          <Logo variant="dark" />
 
           {/* Search Bar */}
           <div className="flex-1 max-w-2xl mx-8">
@@ -139,13 +154,16 @@ const Header: React.FC = () => {
           <div className="flex items-center space-x-6">
             {headerActions.map((action, index) => (
               <div key={index}>
-                {action.type === 'link' ? (
+                {action.type === "link" ? (
                   <Link href={action.href} className={action.className}>
                     {action.label}
                   </Link>
                 ) : (
                   <Link href={action.href} className={action.className}>
-                    <Icon icon={action.icon!} className="w-6 h-6 text-gray-700" />
+                    <Icon
+                      icon={action.icon!}
+                      className="w-6 h-6 text-gray-700"
+                    />
                     {action.hasNotification && action.notificationCount && (
                       <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
                         {action.notificationCount}
@@ -167,7 +185,7 @@ const Header: React.FC = () => {
 
         {/* Navigation Bar */}
         <nav className="bg-white">
-          <div className="px-20 py-2">
+          <div className="px-16 py-2">
             <div className="flex items-center space-x-8">
               {navigationItems.map((item) => (
                 <Link
@@ -177,9 +195,9 @@ const Header: React.FC = () => {
                 >
                   <span className="text-sm font-medium">{item.name}</span>
                   {item.hasDropdown && (
-                    <Icon 
-                      icon="mdi:arrow-up" 
-                      className="w-4 h-4 rotate-45 group-hover:rotate-90 transition-transform" 
+                    <Icon
+                      icon="mdi:arrow-up"
+                      className="w-4 h-4 rotate-45 group-hover:rotate-90 transition-transform"
                     />
                   )}
                 </Link>
@@ -227,7 +245,10 @@ const Header: React.FC = () => {
                   >
                     <span className="font-medium">{item.name}</span>
                     {item.hasDropdown && (
-                      <Icon icon="material-symbols:chevron-right" className="w-5 h-5" />
+                      <Icon
+                        icon="material-symbols:chevron-right"
+                        className="w-5 h-5"
+                      />
                     )}
                   </Link>
                 ))}
@@ -243,11 +264,13 @@ const Header: React.FC = () => {
               >
                 Get started
               </CustomButton>
-              
+
               <div className="text-center">
-                <span className="text-sm text-gray-500">Already have an account? </span>
-                <Link 
-                  href="/auth/login" 
+                <span className="text-sm text-gray-500">
+                  Already have an account?{" "}
+                </span>
+                <Link
+                  href="/auth/login"
                   className="text-sm text-[#38BDF8] font-medium hover:underline"
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
@@ -259,7 +282,7 @@ const Header: React.FC = () => {
         </div>
       )}
     </header>
-  )
-}
+  );
+};
 
-export { Header }
+export { Header };
