@@ -27,12 +27,12 @@ import { RootState } from "./store";
 import { setAuthCookies, clearAuthCookies } from "@/lib/utils/cookies";
 
 
-// const BASE_URL =
-//     process.env.NODE_ENV === "production"
-//         ? process.env.API_BASE_URL || "https://api.tradeoff.com"
-//         : `http://localhost:3050`;
+const BASE_URL =
+    process.env.NODE_ENV === "production"
+        ? process.env.API_BASE_URL || "https://api-tradeoff.onrender.com"
+        : `http://192.168.1.135:3050`;
 
-const BASE_URL = process.env.API_BASE_URL || "http://192.168.1.135:3050";
+// const BASE_URL = process.env.API_BASE_URL || "http://192.168.1.135:3050";
 
 // Helper functions for token management
 const getTokenFromStorage = (): string | null => {
