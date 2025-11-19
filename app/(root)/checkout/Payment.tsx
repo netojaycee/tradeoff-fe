@@ -6,11 +6,11 @@ import { formatPrice } from "@/lib/utils";
 
 export default function Payment({
   checkoutData,
-  paystackLoaded,
+  isLoading = false,
   handlePaymentFormSubmit,
 }: {
   checkoutData: CheckoutCredentials | null;
-  paystackLoaded: boolean;
+  isLoading?: boolean;
   handlePaymentFormSubmit: () => void;
 }) {
   // Get cart items and calculate totals
@@ -88,16 +88,16 @@ export default function Payment({
 
           <button
             onClick={handlePaymentFormSubmit}
-            disabled={!paystackLoaded}
+            disabled={isLoading}
             className="w-full bg-[#38BDF8] hover:bg-[#2abdfc] disabled:bg-gray-400 text-white py-4 text-lg font-medium rounded-lg transition-colors flex items-center justify-center"
           >
-            {!paystackLoaded ? (
+            {isLoading ? (
               <>
                 <Icon
                   icon="material-symbols:progress-activity"
                   className="w-5 h-5 animate-spin mr-2"
                 />
-                Loading Payment System...
+                Processing Order...
               </>
             ) : (
               <>
@@ -105,7 +105,7 @@ export default function Payment({
                   icon="material-symbols:credit-card-outline"
                   className="w-5 h-5 mr-2"
                 />
-                Pay Securely with Paystack
+                Proceed to Payment
               </>
             )}
           </button>

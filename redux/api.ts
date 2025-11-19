@@ -206,14 +206,14 @@ export const api = createApi({
                 try {
                     const { data } = await queryFulfilled;
                     if (data.success && data.data) {
-                        const { user, accessToken, refreshToken } = data.data;
+                        // const { user, accessToken, refreshToken } = data.data;
                         
                         // Store tokens in localStorage
-                        setTokensInStorage(accessToken, refreshToken);
+                        // setTokensInStorage(accessToken, refreshToken);
                         
                         // Update Redux store
-                        dispatch(setTokens({ accessToken, refreshToken }));
-                        dispatch(setUserInfo(user));
+                        // dispatch(setTokens({ accessToken, refreshToken }));
+                        // dispatch(setUserInfo(user));
                     }
                 } catch (error) {
                     console.error("Registration failed:", error);
@@ -509,6 +509,45 @@ export const api = createApi({
             invalidatesTags: ["Category"],
         }),
 
+        // CREATE ORDER ENDPOINT
+        createOrder: builder.mutation<
+            { order: any; data: { payment?: { reference: string; authorizationUrl: string; amount: number; currency: string; paymentMethod: string } } },
+            {
+                items: Array<{ productId: string; quantity: number; selectedSize?: string; itemNotes?: string }>;  
+                shippingAddress: {
+                    firstName: string;
+                    lastName: string;
+                    email: string;
+                    phone: string;
+                    address: string;
+                    city: string;
+                    state: string;
+                    country: string;
+                    postalCode?: string;
+                };
+                shippingMethod?: string;
+                buyerNotes?: string;
+                couponCode?: string;
+                paymentMethod?: string;
+                paymentNote?: string;
+            }
+        >({
+            query: (data) => ({
+                url: "/orders",
+                method: "POST",
+                body: {
+                    ...data,
+                    paymentMethod: data.paymentMethod || "paystack", // Default to paystack
+                },
+            }),
+            invalidatesTags: ["Product"],
+        }),
+
+        // GET ORDER BY orderNo ENDPOINT
+        getOrderByOrderNo: builder.query<{ success: boolean; message: string; data: any; timestamp: string }, string>({
+            query: (ordno) => ({ url: `/orders/number/${ordno}` }),
+        }),
+
         // CHECKOUT ENDPOINT (keeping existing functionality)
         checkout: builder.mutation<
             { authorization_url: string, access_code: string, reference: string },
@@ -525,7 +564,7 @@ export const api = createApi({
             }
         >({
             query: (data) => ({
-                url: "/orders/checkout",
+                url: "/orders/",
                 method: "POST",
                 body: data,
             }),
@@ -597,7 +636,9 @@ export const {
     useEditSubcategoryMutation,
     useDeleteSubcategoryMutation,
     
-    // Checkout
+    // Orders
+    useCreateOrderMutation,
+    useGetOrderByOrderNoQuery,
     useCheckoutMutation,
 } = api;
 

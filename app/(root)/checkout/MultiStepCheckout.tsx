@@ -2,60 +2,17 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { useSelector } from "react-redux";
 import { Icon } from "@iconify/react";
 import { toast } from "sonner";
 
 import CheckoutForm from "./CheckoutForm";
 import Confirmation from "./Confirmation";
-import { useCheckoutMutation } from "@/redux/api";
+import { useCreateOrderMutation, useGetOrderByOrderNoQuery } from "@/redux/api";
 import { type CheckoutCredentials } from "@/lib/schema";
+import { RootState } from "@/redux/store";
 import Payment from "./Payment";
-
-// Paystack types
-declare global {
-  interface Window {
-    PaystackPop: {
-      setup: (options: PaystackOptions) => {
-        openIframe: () => void;
-      };
-    };
-  }
-}
-
-interface PaystackOptions {
-  key: string;
-  email: string;
-  amount: number;
-  currency: string;
-  ref: string;
-  callback: (response: PaystackResponse) => void;
-  onClose: () => void;
-  metadata?: {
-    custom_fields: Array<{
-      display_name: string;
-      variable_name: string;
-      value: string;
-    }>;
-  };
-}
-
-interface PaystackResponse {
-  reference: string;
-  status: string;
-  transaction: string;
-  message: string;
-}
-
-interface OrderDetails {
-  orderId: string;
-  item: string;
-  size: string;
-  color: string;
-  deliveryMethod: string;
-  deliverTo: string;
-  paymentMethod: string;
-  amount: string;
-}
 
 const steps = [
   {
@@ -73,39 +30,43 @@ const steps = [
 
 export default function MultiStepCheckout() {
   const [currentStep, setCurrentStep] = useState(1);
-  const [checkoutData, setCheckoutData] = useState<CheckoutCredentials | null>(
-    null
+  const [checkoutData, setCheckoutData] = useState<CheckoutCredentials | null>(null);
+  const [orderDetails, setOrderDetails] = useState<any>(null);
+  const [ordno, setOrdno] = useState<string | null>(null);
+  const searchParams = useSearchParams();
+  
+  const cartItems = useSelector((state: RootState) => state.cart.items);
+  const [createOrder, { isLoading: isCreatingOrder }] = useCreateOrderMutation();
+
+  // Query to fetch order by reference - only runs when reference exists
+  const { data: orderData, isLoading: isFetchingOrder } = useGetOrderByOrderNoQuery(
+    ordno!,
+    { skip: !ordno } // Skip query if no reference
   );
-  const [orderDetails, setOrderDetails] = useState<OrderDetails | null>({
-    orderId: `#LVX-${new Date().getFullYear()}-${Date.now()
-      .toString()
-      .slice(-5)}`,
-    item: "LV Remix Boat Shoe",
-    size: "45",
-    color: "Black",
-    deliveryMethod: "Standard (2-5 business days)",
-    deliverTo: `helll`,
-    paymentMethod: "Card Payment",
-    amount: "N27,500.00",
-  });
-  const [paystackLoaded, setPaystackLoaded] = useState(false);
 
-  const [checkout, { isLoading: isCheckoutLoading }] = useCheckoutMutation();
-
-  // Load Paystack script
+  // Check if returning from Paystack payment
   useEffect(() => {
-    const script = document.createElement("script");
-    script.src = "https://js.paystack.co/v1/inline.js";
-    script.async = true;
-    script.onload = () => setPaystackLoaded(true);
-    document.body.appendChild(script);
+    const paymentOrdno = searchParams.get('ordno');
+    
+    if (paymentOrdno) {
+      // Set ordno to trigger the query
+      setOrdno(paymentOrdno);
+    } 
+    // else if (paymentOrdno && status === 'cancelled') {
+    //   toast.info("Payment cancelled. Please try again.");
+    //   // Reset to step 1 for retry
+    //   setCurrentStep(1);
+    // }
+  }, [searchParams]);
 
-    return () => {
-      if (document.body.contains(script)) {
-        document.body.removeChild(script);
-      }
-    };
-  }, []);
+  // Handle order data when it arrives from the query
+  useEffect(() => {
+    if (orderData?.success && orderData.data) {
+      setOrderDetails(orderData.data);
+      setCurrentStep(3);
+      toast.success("Payment successful! Your order has been confirmed.");
+    }
+  }, [orderData]);
 
   const handleCheckoutSubmit = async (data: CheckoutCredentials) => {
     try {
@@ -118,110 +79,55 @@ export default function MultiStepCheckout() {
     }
   };
 
-  const generatePaystackReference = () => {
-    return `tradeoff_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-  };
-
   const handlePaystackPayment = async () => {
-    if (!paystackLoaded || !window.PaystackPop) {
-      toast.error("Payment system is loading. Please try again.");
-      return;
-    }
-
     if (!checkoutData) {
       toast.error("Checkout data not found. Please go back and fill the form.");
       return;
     }
 
+    if (cartItems.length === 0) {
+      toast.error("Your cart is empty. Please add items before checkout.");
+      return;
+    }
+
     try {
-      // Create order in backend first
-      const checkoutPayload = {
-        firstName: checkoutData.firstName,
-        lastName: checkoutData.lastName,
-        phoneNumber: checkoutData.phoneNumber,
-        email: checkoutData.email,
-        state: checkoutData.state,
-        lga: checkoutData.lga,
-        streetAddress: checkoutData.streetAddress,
-        paymentMethod: checkoutData.paymentMethod,
-        items: [
-          {
-            name: "LV Remix Boat Shoe Black - 45",
-            price: 24000,
-            quantity: 1,
-          },
-        ],
-        subtotal: 24000,
-        deliveryFee: 2500,
-        tax: 1000,
-        total: 27500,
+      // Create order payload matching backend structure
+      const orderPayload = {
+        items: cartItems.map((item) => ({
+          productId: item.id,
+          quantity: item.quantity,
+        })),
+        shippingAddress: {
+          firstName: checkoutData.firstName,
+          lastName: checkoutData.lastName,
+          email: checkoutData.email,
+          phone: checkoutData.phoneNumber,
+          address: checkoutData.streetAddress,
+          city: checkoutData.lga, // Using LGA as city
+          state: checkoutData.state,
+          country: "Nigeria",
+        },
+        shippingMethod: "standard",
+        paymentMethod: "paystack",
       };
 
-      const response = await checkout(checkoutPayload).unwrap();
+      console.log("Creating order with payload:", orderPayload);
 
-      if (!response.authorization_url) {
-        throw new Error("No authorization URL received");
+      // Create order in backend
+      const orderResponse = await createOrder(orderPayload).unwrap();
+
+      console.log("Order created:", orderResponse);
+
+      // Extract payment details
+      const { data } = orderResponse;
+      
+      if (!data?.payment?.authorizationUrl) {
+        throw new Error("No authorization URL received from backend");
       }
 
-      // Extract reference from Paystack response
-      const reference = response.reference || generatePaystackReference();
-
-      const handler = window.PaystackPop.setup({
-        key:
-          process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY ||
-          "pk_test_your_key_here", // Replace with your public key
-        email: checkoutData.email,
-        amount: 2750000, // Amount in kobo (N27,500.00)
-        currency: "NGN",
-        ref: reference,
-        metadata: {
-          custom_fields: [
-            {
-              display_name: "Customer Name",
-              variable_name: "customer_name",
-              value: `${checkoutData.firstName} ${checkoutData.lastName}`,
-            },
-            {
-              display_name: "Phone Number",
-              variable_name: "phone_number",
-              value: checkoutData.phoneNumber,
-            },
-            {
-              display_name: "Delivery Address",
-              variable_name: "delivery_address",
-              value: `${checkoutData.streetAddress}, ${checkoutData.lga}, ${checkoutData.state}`,
-            },
-          ],
-        },
-        callback: (response: PaystackResponse) => {
-          if (response.status === "success") {
-            // Payment successful
-            const successOrderDetails: OrderDetails = {
-              orderId: `#LVX-${new Date().getFullYear()}-${Date.now()
-                .toString()
-                .slice(-5)}`,
-              item: "LV Remix Boat Shoe",
-              size: "45",
-              color: "Black",
-              deliveryMethod: "Standard (2-5 business days)",
-              deliverTo: `${checkoutData.streetAddress}, ${checkoutData.lga}, ${checkoutData.state}`,
-              paymentMethod: "Card Payment",
-              amount: "N27,500.00",
-            };
-
-            setOrderDetails(successOrderDetails);
-            setCurrentStep(3);
-            toast.success("Payment successful! Your order has been confirmed.");
-          } else {
-            toast.error("Payment failed. Please try again.");
-          }
-        },
-        onClose: () => {
-          toast.info("Payment cancelled");
-        },
-      });
-
-      handler.openIframe();
+      // Redirect to authorization URL
+      // After payment, user will be redirected back to /checkout?reference=...&status=success
+      window.location.href = data.payment.authorizationUrl;
     } catch (error: unknown) {
       console.error("Payment error:", error);
       const errorMessage =
@@ -232,19 +138,17 @@ export default function MultiStepCheckout() {
         typeof error.data === "object" &&
         "message" in error.data
           ? String(error.data.message)
-          : "Payment failed. Please try again.";
+          : "Failed to create order. Please try again.";
       toast.error(errorMessage);
     }
-  };
+  }
 
   const handlePaymentFormSubmit = async () => {
-    // Instead of handling card details directly, we use Paystack
     await handlePaystackPayment();
   };
 
   const handleTrackOrder = () => {
     toast.info("Redirecting to order tracking...");
-    // Implement order tracking navigation
   };
 
   const handleContinueShopping = () => {
@@ -348,7 +252,7 @@ export default function MultiStepCheckout() {
           {currentStep === 1 && (
             <CheckoutForm
               onSubmit={handleCheckoutSubmit}
-              isLoading={isCheckoutLoading}
+              isLoading={isCreatingOrder}
               defaultValues={checkoutData || undefined}
             />
           )}
@@ -356,7 +260,7 @@ export default function MultiStepCheckout() {
           {currentStep === 2 && (
             <Payment
               checkoutData={checkoutData}
-              paystackLoaded={paystackLoaded}
+              isLoading={isCreatingOrder}
               handlePaymentFormSubmit={handlePaymentFormSubmit}
             />
           )}

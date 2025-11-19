@@ -14,6 +14,7 @@ import {
 import { Icon } from "@iconify/react";
 import { useDispatch } from "react-redux";
 import { removeFromCart, updateQuantity } from "@/redux/slices/cartSlice";
+import { formatPrice } from "@/lib/utils";
 
 type CartItem = {
   id: string;
@@ -78,7 +79,7 @@ export default function CartItemCard({
           {item.name}
         </h3>
         <p className="text-2xl font-bold text-gray-900 mt-2">
-          ₦{item.price.toLocaleString("en-NG")}.00
+          {formatPrice(item.price)}
         </p>
       </div>
 
