@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useEffect, useState } from 'react'
+import React, { Suspense, useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useVerifyEmailMutation, useResendVerificationMutation } from '@/lib/api'
@@ -17,7 +17,7 @@ import { toast } from 'sonner'
 import { verifyEmailSchema, type VerifyEmailCredentials } from '@/lib/schema'
 import { cn } from '@/lib/utils'
 
-export default function VerifyOTP() {
+function VerifyOTPContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const emailFromQuery = searchParams.get('email')
@@ -213,5 +213,23 @@ export default function VerifyOTP() {
         </div>
       </div>
     </AuthLayout>
+  )
+}
+
+export default function VerifyOTP() {
+  return (
+    <Suspense
+      fallback={
+        <AuthLayout title="Loading..." subtitle="">
+          <div className="animate-pulse space-y-4">
+            <div className="h-10 bg-gray-200 rounded" />
+            <div className="h-10 bg-gray-200 rounded" />
+            <div className="h-10 bg-gray-200 rounded" />
+          </div>
+        </AuthLayout>
+      }
+    >
+      <VerifyOTPContent />
+    </Suspense>
   )
 }

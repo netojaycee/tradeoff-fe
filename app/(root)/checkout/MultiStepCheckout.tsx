@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { Suspense, useState, useEffect } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Icon } from "@iconify/react";
@@ -27,7 +27,7 @@ const steps = [
   },
 ];
 
-export default function MultiStepCheckout() {
+function MultiStepCheckoutContent() {
   const [currentStep, setCurrentStep] = useState(1);
   const [checkoutData, setCheckoutData] = useState<CheckoutCredentials | null>(null);
   const [orderDetails, setOrderDetails] = useState<any>(null);
@@ -271,5 +271,22 @@ export default function MultiStepCheckout() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function MultiStepCheckout() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="animate-pulse space-y-4 w-full max-w-4xl">
+            <div className="h-12 bg-gray-200 rounded" />
+            <div className="h-96 bg-gray-200 rounded" />
+          </div>
+        </div>
+      }
+    >
+      <MultiStepCheckoutContent />
+    </Suspense>
   );
 }

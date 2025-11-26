@@ -6,8 +6,9 @@ import { generateProductSchema, generateSearchActionSchema } from '@/lib/seo/pro
 import { logger } from '@/lib/utils/logger';
 import ProductDetailsClient from './(components)/ProductDetailsClient';
 
-// Enable ISR with 1-hour revalidation
-export const revalidate = 3600;
+// Disable prerendering - generate on demand
+export const revalidate = false;
+export const dynamicParams = true;
 
 // Props types
 interface ProductDetailsPageProps {
@@ -19,30 +20,9 @@ interface ProductDetailsPageProps {
 
 // Generate static parameters for top products
 export async function generateStaticParams() {
-  try {
-    const response = await fetch(`${API_BASE_URL}/products?limit=100&sortBy=newest&status=active`, {
-      next: { revalidate: 86400 } // Cache for 24 hours
-    });
-    
-    if (!response.ok) {
-      logger.error('Failed to fetch products for generateStaticParams');
-      return [];
-    }
-
-    const data = await response.json();
-    const products = data?.data || [];
-
-    return products
-      .filter((p: any) => p.slug && p.category?.slug)
-      .map((product: any) => ({
-        productSlug: product.slug,
-        category: product.category.slug,
-      }))
-      .slice(0, 100); // Pre-render top 100 products
-  } catch (error) {
-    logger.error('Error in generateStaticParams:', error);
-    return [];
-  }
+  // Return empty array to skip pre-rendering
+  // Pages will be generated on-demand with dynamicParams = true
+  return [];
 }
 
 // Generate metadata for each product page

@@ -1,5 +1,5 @@
 "use client";
-import { useEffect } from "react";
+import { Suspense, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -24,7 +24,7 @@ import {
   type ResetPasswordCredentials,
 } from "@/lib/schema";
 
-export default function ResetPasswordPage() {
+function ResetPasswordContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   // const email = searchParams.get("email") || ""
@@ -197,5 +197,23 @@ export default function ResetPasswordPage() {
         </button>
       </div>
     </AuthLayout>
+  );
+}
+
+export default function ResetPasswordPage() {
+  return (
+    <Suspense
+      fallback={
+        <AuthLayout title="Loading..." subtitle="">
+          <div className="animate-pulse space-y-4">
+            <div className="h-10 bg-gray-200 rounded" />
+            <div className="h-10 bg-gray-200 rounded" />
+            <div className="h-10 bg-gray-200 rounded" />
+          </div>
+        </AuthLayout>
+      }
+    >
+      <ResetPasswordContent />
+    </Suspense>
   );
 }

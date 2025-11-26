@@ -16,10 +16,12 @@ interface Product {
   updatedAt?: string;
 }
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://192.168.1.135:3050";
+
 async function getCategories(): Promise<Category[]> {
   try {
     const response = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/categories?limit=1000`,
+      `${API_BASE_URL}/categories?limit=1000`,
       {
         next: { revalidate: 86400 }, // Cache for 24 hours
       }
@@ -36,7 +38,7 @@ async function getCategories(): Promise<Category[]> {
 async function getTopProducts(): Promise<Product[]> {
   try {
     const response = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/products?limit=5000&sort=popular`,
+      `${API_BASE_URL}/products?limit=5000&sort=popular`,
       {
         next: { revalidate: 86400 }, // Cache for 24 hours
       }
