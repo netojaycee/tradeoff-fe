@@ -1,8 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
-import { useSelector } from "react-redux";
-import { RootState } from "@/redux/store";
+import { useCartStore } from "@/lib/stores";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Icon } from "@iconify/react";
@@ -49,8 +48,8 @@ export default function CheckoutForm({
   isLoading = false,
   defaultValues,
 }: CheckoutFormProps) {
-  // Get cart items from Redux
-  const cartItems = useSelector((state: RootState) => state.cart.items);
+  // Get cart items from Zustand store
+  const { items: cartItems } = useCartStore();
   // Calculate order summary
   const subtotal = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const deliveryFee = cartItems.length > 0 ? 2500 : 0;

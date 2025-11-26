@@ -115,6 +115,7 @@ export interface Product {
     sellerId: string
     sellerName?: string
     isVerifiedSeller?: boolean
+    isVerified?: boolean
     originalPrice: number
     sellingPrice: number
     retailPrice?: number | null

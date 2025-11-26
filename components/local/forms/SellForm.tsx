@@ -27,7 +27,7 @@ import {
 } from "@/components/ui/select";
 
 import { productSchema, type ProductFormData } from "@/lib/schema";
-import { useGetCategoriesQuery, useCreateProductMutation } from "@/redux/api";
+import { useGetCategoriesQuery, useCreateProductMutation } from "@/lib/api";
 
 interface SellFormProps {
   onSubmit?: (data: ProductFormData) => Promise<void>;
@@ -39,9 +39,9 @@ export default function SellForm({ onSubmit, isLoading = false }: SellFormProps)
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
   const [previewUrls, setPreviewUrls] = useState<string[]>([]);
 
-  // RTK Query for categories
+  // TanStack Query for categories
   const { data: categoriesData, isLoading: categoriesLoading } = useGetCategoriesQuery();
-  const [createProduct, { isLoading: isCreating }] = useCreateProductMutation();
+  const createProductMutation = useCreateProductMutation();
 
   const form = useForm<ProductFormData>({
     resolver: zodResolver(productSchema),
@@ -115,8 +115,8 @@ export default function SellForm({ onSubmit, isLoading = false }: SellFormProps)
       if (onSubmit) {
         await onSubmit(formData);
       } else {
-        // Use RTK mutation if no custom onSubmit
-        await createProduct(formData).unwrap();
+        // Use TanStack Query mutation if no custom onSubmit
+        await createProductMutation.mutateAsync(formData);
         toast.success("Product created successfully!");
         router.push("/products");
       }
@@ -128,7 +128,7 @@ export default function SellForm({ onSubmit, isLoading = false }: SellFormProps)
   };
 
   const categories = categoriesData?.data || [];
-  const loading = isLoading || isCreating || categoriesLoading;
+  const loading = isLoading || createProductMutation.isPending || categoriesLoading;
 
   return (
     <div className="w-full">

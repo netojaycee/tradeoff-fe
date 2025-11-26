@@ -16,22 +16,14 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form'
-import { useForgotPasswordMutation } from '@/redux/api'
+import { useForgotPasswordMutation } from '@/lib/api'
 import { forgotPasswordSchema, type ForgotPasswordCredentials } from '@/lib/schema'
 
 export default function ForgotPasswordPage() {
   const router = useRouter()
   const [isSubmitted, setIsSubmitted] = useState(false)
   
-  const [
-    forgotPass,
-    {
-      isLoading: isLoadingForgotPass,
-      isSuccess: isSuccessForgotPass,
-      isError: isErrorForgotPass,
-      error: errorForgotPass,
-    },
-  ] = useForgotPasswordMutation()
+  const forgotPasswordMutation = useForgotPasswordMutation()
 
   const form = useForm<ForgotPasswordCredentials>({
     resolver: zodResolver(forgotPasswordSchema),
@@ -42,7 +34,7 @@ export default function ForgotPasswordPage() {
 
   const onSubmit = async (values: ForgotPasswordCredentials) => {
     try {
-      await forgotPass(values).unwrap()
+      await forgotPasswordMutation.mutateAsync(values)
       setIsSubmitted(true)
     } catch (error) {
       console.error('Send OTP error:', error)
@@ -50,21 +42,18 @@ export default function ForgotPasswordPage() {
   }
 
   useEffect(() => {
-    if (isSuccessForgotPass) {
+    if (forgotPasswordMutation.isSuccess) {
       toast.success('Reset code sent to your email!')
       // Navigate to reset password page with email in query
       setTimeout(() => {
         router.push(`/auth/reset-password?email=${encodeURIComponent(form.getValues('email'))}`)
       }, 1500)
-    } else if (isErrorForgotPass) {
-      if ('data' in errorForgotPass && typeof errorForgotPass.data === 'object') {
-        const errorMessage = (errorForgotPass.data as { error?: string })?.error
-        toast.error(errorMessage || 'Failed to send reset code')
-      } else {
-        toast.error('Failed to send reset code')
-      }
+    } else if (forgotPasswordMutation.isError) {
+      const error = forgotPasswordMutation.error as any
+      const errorMessage = error?.message || 'Failed to send reset code'
+      toast.error(errorMessage)
     }
-  }, [isSuccessForgotPass, isErrorForgotPass, errorForgotPass, router, form])
+  }, [forgotPasswordMutation.isSuccess, forgotPasswordMutation.isError, forgotPasswordMutation.error, router, form])
 
   if (isSubmitted) {
     return (
@@ -140,8 +129,8 @@ export default function ForgotPasswordPage() {
           <CustomButton
             type="submit"
             className="w-full text-white font-medium py-3 text-base rounded-sm transition-colors"
-            disabled={isLoadingForgotPass}
-            loading={isLoadingForgotPass}
+            disabled={forgotPasswordMutation.isPending}
+            loading={forgotPasswordMutation.isPending}
             loadingText="Sending..."
           >
             Send Reset Code

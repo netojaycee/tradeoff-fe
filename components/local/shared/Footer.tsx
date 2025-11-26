@@ -185,7 +185,7 @@ const Footer: React.FC = () => {
           {/* Row 3: Logo and Links */}
           <div className="flex w-full items-start">
             <div className="space-y-6 flex-1">
-              <Logo variant='light' />
+              <Logo variant='light' priority={false} />
               {/* Row 4: Disclaimer */}
           <div className="max-w-md">
             <p className="text-gray-400 text-sm leading-relaxed">
@@ -328,7 +328,7 @@ const Footer: React.FC = () => {
           </div>
 
           {/* Logo */}
-         <Logo variant='light' />
+         <Logo variant='light' priority={false} />
 
           {/* Disclaimer */}
           <div>

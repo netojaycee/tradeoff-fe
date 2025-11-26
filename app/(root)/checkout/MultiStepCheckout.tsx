@@ -3,15 +3,14 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useSelector } from "react-redux";
 import { Icon } from "@iconify/react";
 import { toast } from "sonner";
 
 import CheckoutForm from "./CheckoutForm";
 import Confirmation from "./Confirmation";
-import { useCreateOrderMutation, useGetOrderByOrderNoQuery } from "@/redux/api";
+import { useCreateOrderMutation, useGetOrderByOrderNoQuery } from "@/lib/api";
 import { type CheckoutCredentials } from "@/lib/schema";
-import { RootState } from "@/redux/store";
+import { useCartStore } from "@/lib/stores";
 import Payment from "./Payment";
 
 const steps = [
@@ -35,13 +34,14 @@ export default function MultiStepCheckout() {
   const [ordno, setOrdno] = useState<string | null>(null);
   const searchParams = useSearchParams();
   
-  const cartItems = useSelector((state: RootState) => state.cart.items);
-  const [createOrder, { isLoading: isCreatingOrder }] = useCreateOrderMutation();
+  // Use Zustand store for cart items
+  const { items: cartItems } = useCartStore();
+  const createOrderMutation = useCreateOrderMutation();
 
   // Query to fetch order by reference - only runs when reference exists
   const { data: orderData, isLoading: isFetchingOrder } = useGetOrderByOrderNoQuery(
     ordno!,
-    { skip: !ordno } // Skip query if no reference
+    { enabled: !!ordno } // Only run when ordno exists
   );
 
   // Check if returning from Paystack payment
@@ -111,12 +111,8 @@ export default function MultiStepCheckout() {
         paymentMethod: "paystack",
       };
 
-      console.log("Creating order with payload:", orderPayload);
-
       // Create order in backend
-      const orderResponse = await createOrder(orderPayload).unwrap();
-
-      console.log("Order created:", orderResponse);
+      const orderResponse = await createOrderMutation.mutateAsync(orderPayload);
 
       // Extract payment details
       const { data } = orderResponse;
@@ -252,7 +248,7 @@ export default function MultiStepCheckout() {
           {currentStep === 1 && (
             <CheckoutForm
               onSubmit={handleCheckoutSubmit}
-              isLoading={isCreatingOrder}
+              isLoading={createOrderMutation.isPending}
               defaultValues={checkoutData || undefined}
             />
           )}
@@ -260,7 +256,7 @@ export default function MultiStepCheckout() {
           {currentStep === 2 && (
             <Payment
               checkoutData={checkoutData}
-              isLoading={isCreatingOrder}
+              isLoading={createOrderMutation.isPending}
               handlePaymentFormSubmit={handlePaymentFormSubmit}
             />
           )}

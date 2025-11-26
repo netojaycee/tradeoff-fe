@@ -2,10 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useDispatch, useSelector } from "react-redux";
-import { RootState } from "@/redux/store";
-import { addToCart, updateQuantity } from "@/redux/slices/cartSlice";
-import { toggleFavorite } from "@/redux/slices/favoritesSlice";
+import { useCartStore, useFavoritesStore } from "@/lib/stores";
 import Image from "next/image";
 import { Icon } from "@iconify/react";
 import { cn, formatPrice } from "@/lib/utils";
@@ -32,10 +29,12 @@ export default function ProductCard({ product, className, isLoading = false }: P
   if (isLoading || !product) {
     return <ProductCardSkeleton />;
   }
-  const dispatch = useDispatch();
+
+  // Use Zustand stores instead of Redux
+  const { addToCart, updateQuantity, items: cartItems } = useCartStore();
+  const { toggleFavorite, isFavorited } = useFavoritesStore();
+
   const [openedAddedToCart, setOpenedAddedToCart] = useState(false);
-  const favorites = useSelector((state: RootState) => state.favorites.items);
-  const cartItems = useSelector((state: RootState) => state.cart.items);
   const [isAddingToCart, setIsAddingToCart] = useState(false);
   const router = useRouter();
 
@@ -46,10 +45,10 @@ export default function ProductCard({ product, className, isLoading = false }: P
   const originalPrice = product.originalPrice;
   const discount = originalPrice && productPrice ? Math.round(((originalPrice - productPrice) / originalPrice) * 100) : 0;
 
-  const isFavorite = favorites.includes(productId);
+  const isFavorite = isFavorited(productId);
 
   const handleToggleFavorite = () => {
-    dispatch(toggleFavorite(productId));
+    toggleFavorite(productId);
   };
 
   const handleAddToCart = async () => {
@@ -57,18 +56,16 @@ export default function ProductCard({ product, className, isLoading = false }: P
     // Check if already in cart
     const existing = cartItems.find((item) => item.id === productId);
     if (!existing) {
-      dispatch(
-        addToCart({
-          id: productId,
-          name: productTitle,
-          price: productPrice,
-          image: product.images[0],
-          quantity: 1,
-        })
-      );
+      addToCart({
+        id: productId,
+        name: productTitle,
+        price: productPrice,
+        image: product.images[0],
+        quantity: 1,
+      });
     } else {
       // Optionally, increase quantity or show feedback
-      dispatch(updateQuantity({ id: productId, quantity: existing.quantity + 1 }));
+      updateQuantity(productId, existing.quantity + 1);
     }
     // UI feedback
     setTimeout(() => setIsAddingToCart(false), 500);

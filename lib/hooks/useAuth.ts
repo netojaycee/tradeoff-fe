@@ -1,8 +1,7 @@
-import { useSelector } from 'react-redux';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
-import { RootState } from '@/redux/store';
-import { useGetProfileQuery } from '@/redux/api';
+import { useAuthStore } from '@/lib/stores';
+import { useGetProfileQuery } from '@/lib/api';
 
 interface UseAuthOptions {
     redirectTo?: string;
@@ -11,6 +10,7 @@ interface UseAuthOptions {
 
 /**
  * Custom hook for authentication logic
+ * Now uses Zustand store instead of Redux
  * @param options - Configuration options
  * @returns Auth state and utilities
  */
@@ -18,25 +18,23 @@ export function useAuth(options: UseAuthOptions = {}) {
     const { redirectTo, redirectIfFound = false } = options;
     const router = useRouter();
     
-    // Get auth state from Redux store
-    const { user, accessToken, refreshToken, isAuthenticated } = useSelector(
-        (state: RootState) => state.auth
-    );
+    // Get auth state from Zustand store
+    const { user, accessToken, refreshToken, isAuthenticated, isLoading, setUserInfo } = useAuthStore();
     
     // Attempt to fetch user profile if we have a token but no user data
     const {
         isLoading: isLoadingProfile,
         error: profileError,
-    } = useGetProfileQuery(undefined, {
-        skip: !accessToken || !!user, // Skip if no token or user already exists
+    } = useGetProfileQuery({
+        enabled: !!accessToken && !user,
     });
     
-    const isLoading = isLoadingProfile;
+    const isLoading2 = isLoadingProfile;
     const hasError = !!profileError;
     
     useEffect(() => {
         // Handle redirects based on auth state
-        if (!isLoading && redirectTo) {
+        if (!isLoading2 && redirectTo) {
             if (redirectIfFound && isAuthenticated) {
                 // Redirect authenticated users away from auth pages
                 router.push(redirectTo);
@@ -47,7 +45,7 @@ export function useAuth(options: UseAuthOptions = {}) {
                 router.push(loginUrl);
             }
         }
-    }, [isAuthenticated, isLoading, redirectTo, redirectIfFound, router]);
+    }, [isAuthenticated, isLoading2, redirectTo, redirectIfFound, router]);
     
     return {
         // Auth state
@@ -55,12 +53,12 @@ export function useAuth(options: UseAuthOptions = {}) {
         accessToken,
         refreshToken,
         isAuthenticated,
-        isLoading,
+        isLoading: isLoading || isLoading2,
         hasError,
         
         // Utilities
         requireAuth: () => {
-            if (!isAuthenticated && !isLoading) {
+            if (!isAuthenticated && !isLoading2) {
                 const currentPath = window.location.pathname;
                 router.push(`/auth/login?redirect=${encodeURIComponent(currentPath)}`);
             }
@@ -101,9 +99,7 @@ export function useRedirectIfAuthenticated(redirectTo: string = '/') {
  * Simple hook to check if user is authenticated
  */
 export function useIsAuthenticated() {
-    const { isAuthenticated, isLoading } = useSelector(
-        (state: RootState) => state.auth
-    );
+    const { isAuthenticated, isLoading } = useAuthStore();
     
     return {
         isAuthenticated,

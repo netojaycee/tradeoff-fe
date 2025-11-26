@@ -1,198 +1,210 @@
-"use client";
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { useParams } from "next/navigation";
-import { useDispatch, useSelector } from "react-redux";
-import { useGetProductBySlugQuery } from "@/redux/api";
-import { addToCart, updateQuantity } from "@/redux/slices/cartSlice";
-import { toggleFavorite } from "@/redux/slices/favoritesSlice";
-import { RootState } from "@/redux/store";
+import { Metadata, ResolvingMetadata } from 'next';
+import { Suspense } from 'react';
+import { API_BASE_URL } from '@/lib/api/client';
 import ProductsGrid from "../../(homepage)/(components)/ProductsGrid";
-import { ProductInfo } from "./(components)/ProductInfo";
-import { ProductAccordion } from "./(components)/ProductAccordion";
-import { ProductGallery } from "./(components)/ProductGallery";
-import BuyNowModal from "../../../../components/local/ecom/BuyNowModal";
-import AddedToCartModal from "@/components/local/ecom/AddedToCartModal";
-import { CustomModal } from "@/components/local/custom/CustomModal";
+import { generateProductSchema, generateSearchActionSchema } from '@/lib/seo/product-schema';
+import { logger } from '@/lib/utils/logger';
+import ProductDetailsClient from './(components)/ProductDetailsClient';
 
-export default function ProductDetails() {
-  const { productSlug, category } = useParams();
-  const dispatch = useDispatch();
-  const router = useRouter();
-  
-  // Redux state
-  const favorites = useSelector((state: RootState) => state.favorites.items);
-  const cartItems = useSelector((state: RootState) => state.cart.items);
-  
-  // Modal states
-  const [openedBuyNow, setOpenedBuyNow] = useState(false);
-  const [openedAddedToCart, setOpenedAddedToCart] = useState(false);
-  const [isAddingToCart, setIsAddingToCart] = useState(false);
-  
-  // Fetch product by slug
-  const { data: productData, isLoading, error } = useGetProductBySlugQuery(
-    productSlug as string,
-    {
-      skip: !productSlug,
-    }
-  );
+// Enable ISR with 1-hour revalidation
+export const revalidate = 3600;
 
-  const product = productData?.data;
+// Props types
+interface ProductDetailsPageProps {
+  params: Promise<{
+    productSlug: string;
+    category: string;
+  }>;
+}
 
-  // Console log the product data for debugging
-  console.log("Product slug:", productSlug);
-  console.log("Category:", category);
-  console.log("Product data response:", productData);
-  console.log("Product:", product);
-  console.log("Is loading:", isLoading);
-  console.log("Error:", error);
-
-  // Handle favorite toggle
-  const handleToggleFavorite = () => {
-    if (product) {
-      const productId = product.id || product._id || "";
-      dispatch(toggleFavorite(productId));
-    }
-  };
-
-  // Handle add to cart
-  const handleAddToCart = async () => {
-    if (!product) return;
+// Generate static parameters for top products
+export async function generateStaticParams() {
+  try {
+    const response = await fetch(`${API_BASE_URL}/products?limit=100&sortBy=newest&status=active`, {
+      next: { revalidate: 86400 } // Cache for 24 hours
+    });
     
-    setIsAddingToCart(true);
-    const productId = product.id || product._id || "";
-    const productTitle = product.title || "";
-    const productPrice = product.sellingPrice || product.originalPrice || 0;
-
-    // Check if already in cart
-    const existing = cartItems.find((item) => item.id === productId);
-    if (!existing) {
-      dispatch(
-        addToCart({
-          id: productId,
-          name: productTitle,
-          price: productPrice,
-          image: product.images[0],
-          quantity: 1,
-        })
-      );
-    } else {
-      dispatch(updateQuantity({ id: productId, quantity: existing.quantity + 1 }));
+    if (!response.ok) {
+      logger.error('Failed to fetch products for generateStaticParams');
+      return [];
     }
 
-    // UI feedback
-    setTimeout(() => setIsAddingToCart(false), 500);
-    setOpenedAddedToCart(true);
-  };
+    const data = await response.json();
+    const products = data?.data || [];
 
-  if (isLoading) {
-    return (
-      <div className="px-4 md:px-16 py-2 md:py-6">
-        <div className="grid lg:grid-cols-2 gap-8">
-          <div className="space-y-4 bg-gray-200 h-96 rounded-lg animate-pulse" />
-          <div className="space-y-4">
-            <div className="bg-gray-200 h-8 rounded animate-pulse" />
-            <div className="bg-gray-200 h-6 rounded animate-pulse w-1/2" />
-            <div className="bg-gray-200 h-10 rounded animate-pulse w-1/3" />
+    return products
+      .filter((p: any) => p.slug && p.category?.slug)
+      .map((product: any) => ({
+        productSlug: product.slug,
+        category: product.category.slug,
+      }))
+      .slice(0, 100); // Pre-render top 100 products
+  } catch (error) {
+    logger.error('Error in generateStaticParams:', error);
+    return [];
+  }
+}
+
+// Generate metadata for each product page
+export async function generateMetadata(
+  { params }: ProductDetailsPageProps,
+  parent: ResolvingMetadata
+): Promise<Metadata> {
+  const resolvedParams = await params;
+  const { productSlug } = resolvedParams;
+
+  try {
+    const response = await fetch(
+      `${API_BASE_URL}/products/slug/${productSlug}`,
+      { next: { revalidate: 3600 } }
+    );
+
+    if (!response.ok) {
+      return { title: 'Product - TradeOff' };
+    }
+
+    const data = await response.json();
+    const product = data?.data;
+
+    if (!product) {
+      return { title: 'Product Not Found - TradeOff' };
+    }
+
+    const title = `${product.title} - Buy on TradeOff`;
+    const description = product.description?.substring(0, 155) || `Buy authentic ${product.title} on TradeOff, Nigeria's premium luxury fashion marketplace.`;
+    const image = product.images?.[0] || '';
+
+    return {
+      title,
+      description,
+      keywords: [product.title, product.category?.name, 'luxury fashion Nigeria', 'authenticated designer'],
+      openGraph: {
+        title,
+        description,
+        type: 'website',
+        images: [{ url: image, width: 600, height: 600, alt: product.title }],
+        url: `https://tradeoff.ng/${resolvedParams.category}/${productSlug}`,
+      },
+      twitter: {
+        card: 'summary_large_image',
+        title,
+        description,
+        images: [image],
+      },
+      alternates: {
+        canonical: `https://tradeoff.ng/${resolvedParams.category}/${productSlug}`,
+      },
+    };
+  } catch (error) {
+    logger.error('Error generating metadata:', error);
+    return { title: 'Product - TradeOff' };
+  }
+}
+
+// Server component that fetches data
+async function ProductDetailsServer({ params }: ProductDetailsPageProps) {
+  const resolvedParams = await params;
+  const { productSlug, category } = resolvedParams;
+
+  try {
+    const response = await fetch(
+      `${API_BASE_URL}/products/slug/${productSlug}`,
+      { 
+        next: { revalidate: 3600 }, // ISR - revalidate every hour
+        headers: {
+          'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=86400',
+        }
+      }
+    );
+
+    if (!response.ok) {
+      return (
+        <div className="px-4 md:px-16 py-8">
+          <div className="text-center">
+            <p className="text-red-500 text-lg">Product not found</p>
           </div>
         </div>
-      </div>
-    );
-  }
+      );
+    }
 
-  if (error || !product) {
+    const data = await response.json();
+    const product = data?.data || [];
+    logger.log('Fetched product:', product);
+
+    if (!product) {
+      return (
+        <div className="px-4 md:px-16 py-8">
+          <div className="text-center">
+            <p className="text-red-500 text-lg">Product not found</p>
+          </div>
+        </div>
+      );
+    }
+
+    // Generate product schema for rich snippets
+    const productSchema = generateProductSchema({
+      id: product.id,
+      name: product.title,
+      description: product.description,
+      image: product.images || [],
+      price: product.price || 0,
+      currency: 'NGN',
+      availability: product.inStock ? 'InStock' : 'OutOfStock',
+      rating: product.rating,
+      reviewCount: product.reviewCount,
+      brand: product.brand,
+      category: product.category?.name,
+      url: `/${category}/${productSlug}`,
+    });
+
+    const searchSchema = generateSearchActionSchema();
+
+    return (
+      <>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(productSchema) }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(searchSchema) }}
+        />
+        <ProductDetailsClient initialProduct={product} />
+      </>
+    );
+  } catch (error) {
+    logger.error('Error fetching product:', error);
     return (
       <div className="px-4 md:px-16 py-8">
         <div className="text-center">
-          <p className="text-red-500 text-lg">Product not found</p>
-          <p className="text-gray-600">Please check the URL and try again</p>
+          <p className="text-red-500 text-lg">Failed to load product</p>
         </div>
       </div>
     );
   }
+}
 
-  const productId = product.id || product._id || "";
-  const isFavorited = favorites.includes(productId);
+// Product loading skeleton
+function ProductDetailsSkeleton() {
   return (
-    <div>
-      <div className="px-4 md:px-16 py-2 md:py-6">
-        <div className="grid lg:grid-cols-2 gap-8">
-          {/* Left: Image Gallery */}
-          <div className="space-y-4">
-            <ProductGallery
-              images={product.images || []}
-              isVerified={product.isVerifiedSeller || false}
-              isWishlisted={isFavorited}
-              onWishlistToggle={handleToggleFavorite}
-            />
-          </div>
-
-          {/* Right: Product Info */}
-          <div className="space-y-4">
-            <ProductInfo
-              product={product}
-              onBuyNowClick={() => setOpenedBuyNow(true)}
-              onAddToCartClick={handleAddToCart}
-            />
-            <ProductAccordion />
-          </div>
+    <div className="px-4 md:px-16 py-2 md:py-6">
+      <div className="grid lg:grid-cols-2 gap-8">
+        <div className="space-y-4 bg-gray-200 h-96 rounded-lg animate-pulse" />
+        <div className="space-y-4">
+          <div className="bg-gray-200 h-8 rounded animate-pulse" />
+          <div className="bg-gray-200 h-6 rounded animate-pulse w-1/2" />
+          <div className="bg-gray-200 h-10 rounded animate-pulse w-1/3" />
         </div>
       </div>
-
-      <div className="py-8 md:py-10 px-4 md:px-16">
-        <ProductsGrid 
-          limit={4} 
-          title={"You May Also Like"} 
-          category={product.category?.slug || ""} 
-          productSlug={product.slug || ""} 
-        />
-      </div>
-
-      <div className="py-8 md:py-10 px-4 md:px-16">
-        <h3 className="text-lg text-[#262626] font-semibold mb-4">
-          Others Also Searched For
-        </h3>
-        <ul className="flex flex-wrap gap-2">
-          {[
-            "Chanel bags under 40k",
-            "Affordable sneakers",
-            "Two piece for wedding",
-            "Louis vuitton cross bags",
-          ].map((term) => (
-            <li key={term}>
-              <a
-                href={`/search?query=${encodeURIComponent(term)}`}
-                className="inline-block px-3 py-1 text-[#DC2626] rounded-full text-sm"
-              >
-                {term}
-              </a>
-            </li>
-          ))}
-        </ul>
-      </div>
-
-      {/* Buy Now Modal */}
-      <CustomModal open={openedBuyNow} onOpenChange={setOpenedBuyNow}>
-        <BuyNowModal product={product} onClose={() => setOpenedBuyNow(false)} />
-      </CustomModal>
-
-      {/* Added to Cart Modal */}
-      <CustomModal open={openedAddedToCart} onOpenChange={setOpenedAddedToCart}>
-        <AddedToCartModal
-          product={{
-            ...product,
-            name: product.title || "",
-            images: product.images || [],
-            price: product.sellingPrice || product.originalPrice || 0,
-          }}
-          onCheckout={() => {
-            setOpenedAddedToCart(false);
-            router.push("/checkout");
-          }}
-          onContinue={() => setOpenedAddedToCart(false)}
-          onClose={() => setOpenedAddedToCart(false)}
-        />
-      </CustomModal>
     </div>
+  );
+}
+
+// Main page component
+export default function ProductDetailsPage({ params }: ProductDetailsPageProps) {
+  return (
+    <Suspense fallback={<ProductDetailsSkeleton />}>
+      <ProductDetailsServer params={params} />
+    </Suspense>
   );
 }

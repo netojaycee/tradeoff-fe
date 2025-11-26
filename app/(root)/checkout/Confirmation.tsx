@@ -23,8 +23,6 @@ export default function Confirmation({
   const handleTrackOrder = () => {
     if (onTrackOrder) {
       onTrackOrder()
-    } else {
-      console.log('Track order:', orderDetails.id || orderDetails.orderNumber)
     }
   }
 

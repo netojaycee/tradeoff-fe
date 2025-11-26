@@ -1,16 +1,16 @@
 'use client';
 
 import { useEffect } from 'react';
-import { useDispatch } from 'react-redux';
-import { setTokens } from '@/redux/slices/userSlice';
+import { useAuthStore } from '@/lib/stores';
 import { setAuthCookies } from '@/lib/utils/cookies';
 
 /**
  * AuthProvider component that initializes authentication state
  * This should be rendered high in the component tree
+ * Now uses Zustand instead of Redux
  */
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-    const dispatch = useDispatch();
+    const { setTokens } = useAuthStore();
 
     useEffect(() => {
         // Initialize auth state from localStorage on app load
@@ -20,7 +20,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 const refreshToken = localStorage.getItem('refreshToken');
 
                 if (accessToken && refreshToken) {
-                    dispatch(setTokens({ accessToken, refreshToken }));
+                    setTokens(accessToken, refreshToken);
                     
                     // Sync with cookies for middleware access
                     setAuthCookies(accessToken, refreshToken);
@@ -29,7 +29,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         };
 
         initializeAuth();
-    }, [dispatch]);
+    }, [setTokens]);
 
     return <>{children}</>;
 }

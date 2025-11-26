@@ -5,7 +5,7 @@ import { CustomButton } from '@/components/local/custom/CustomButton'
 export default function Hero() {
   return (
     <section className=" bg-[#E3E3E31A] overflow-hidden">
-      <div className="flex flex-col-reverse lg:flex-row">
+      <div className="flex flex-col-reverse lg:flex-row items-center">
         {/* Content Section - Left on desktop, Bottom on mobile */}
         <div className="flex-1 flex flex-col justify-center px-4 py-8 lg:px-20 2xl:px-24">
           <div className="max-w-2xl lg:max-w-none">
@@ -41,13 +41,14 @@ export default function Hero() {
         </div>
         
         {/* Image Section - Right on desktop, Top on mobile */}
-        <div className="flex-1 relative">
+        <div className="flex-1 relative w-full">
           <Image
             src="/hero-image.png"
             alt="Stylish man in black jacket"
-            className="object-cover object-center"
-            width={500}
-            height={400}
+            className="object-cover object-center w-full h-auto"
+            width={600}
+            height={800}
+            priority
           />
         </div>
       </div>

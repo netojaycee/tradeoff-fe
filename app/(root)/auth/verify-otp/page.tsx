@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useVerifyEmailMutation, useResendVerificationMutation } from '@/redux/api'
+import { useVerifyEmailMutation, useResendVerificationMutation } from '@/lib/api'
 import { CustomButton, AuthLayout, OTPInput } from '@/components/local'
 import {
   Form,
@@ -28,25 +28,8 @@ export default function VerifyOTP() {
   const [countdown, setCountdown] = useState(60)
   const canResend = countdown === 0
   
-  const [
-    verifyEmail,
-    {
-      isLoading: isLoadingVerify,
-      isSuccess: isSuccessVerify,
-      isError: isErrorVerify,
-      error: errorVerify,
-    },
-  ] = useVerifyEmailMutation()
-
-  const [
-    resendVerification,
-    {
-      isLoading: isLoadingResend,
-      isSuccess: isSuccessResend,
-      isError: isErrorResend,
-      error: errorResend,
-    },
-  ] = useResendVerificationMutation()
+  const verifyEmailMutation = useVerifyEmailMutation()
+  const resendVerificationMutation = useResendVerificationMutation()
 
   const form = useForm<VerifyEmailCredentials>({
     resolver: zodResolver(verifyEmailSchema),
@@ -80,7 +63,7 @@ export default function VerifyOTP() {
 
   // Handle verification results
   useEffect(() => {
-    if (isSuccessVerify) {
+    if (verifyEmailMutation.isSuccess) {
       toast.success('Email verified successfully! You can now log in.')
       // Clear stored email
       if (typeof window !== 'undefined') {
@@ -89,51 +72,42 @@ export default function VerifyOTP() {
       router.push('/auth/login')
     }
     
-    if (isErrorVerify) {
-      if ('data' in errorVerify && typeof errorVerify.data === 'object') {
-        const errorMessage = (errorVerify.data as { message?: string })?.message
-        toast.error(errorMessage || 'Verification failed')
-      } else {
-        toast.error('Verification failed. Please try again.')
-      }
+    if (verifyEmailMutation.isError) {
+      const error = verifyEmailMutation.error as any
+      const errorMessage = error?.message || 'Verification failed'
+      toast.error(errorMessage)
       // Reset form
       setTimeout(() => {
         setOtpValue('')
         form.reset()
       }, 0)
     }
-  }, [isSuccessVerify, isErrorVerify, errorVerify, router, form])
+  }, [verifyEmailMutation.isSuccess, verifyEmailMutation.isError, verifyEmailMutation.error, router, form])
 
   // Handle resend results
   useEffect(() => {
-    if (isSuccessResend) {
+    if (resendVerificationMutation.isSuccess) {
       toast.success('New verification code sent to your email')
-      setTimeout(() => {
-        setCountdown(60)
-      }, 0)
+      setCountdown(60)
     }
     
-    if (isErrorResend) {
-      if ('data' in errorResend && typeof errorResend.data === 'object') {
-        const errorMessage = (errorResend.data as { message?: string })?.message
-        toast.error(errorMessage || 'Failed to resend code')
-      } else {
-        toast.error('Failed to resend verification code')
-      }
+    if (resendVerificationMutation.isError) {
+      const error = resendVerificationMutation.error as any
+      const errorMessage = error?.message || 'Failed to resend code'
+      toast.error(errorMessage)
     }
-  }, [isSuccessResend, isErrorResend, errorResend])
+  }, [resendVerificationMutation.isSuccess, resendVerificationMutation.isError, resendVerificationMutation.error])
 
   const onSubmit = async (values: VerifyEmailCredentials) => {
     try {
-      await verifyEmail({
-        // email: values.email,
+      await verifyEmailMutation.mutateAsync({
+        email: values.email || email,
         code: values.code,
-      }).unwrap()
-      
+      })
       // Success handling is done in useEffect
     } catch (error: unknown) {
       console.error('Verify error:', error)
-      // Error handling is done in useEffect - no toast here to avoid duplicates
+      // Error handling is done in useEffect
     }
   }
 
@@ -153,23 +127,9 @@ export default function VerifyOTP() {
     if (!canResend || !email) return
     
     try {
-      const result = await resendVerification({ email }).unwrap()
-      
-      if (result.success) {
-        toast.success('New verification code sent to your email')
-        setCountdown(60)
-      } else {
-        toast.error(result.message || 'Failed to resend code')
-      }
+      await resendVerificationMutation.mutateAsync({ email })
     } catch (error: unknown) {
       console.error('Resend error:', error)
-      
-      const errorObj = error as { data?: { message?: string }; message?: string }
-      toast.error(
-        errorObj.data?.message || 
-        errorObj.message || 
-        'Failed to resend verification code'
-      )
     }
   }
 
@@ -192,7 +152,7 @@ export default function VerifyOTP() {
                     value={otpValue}
                     onChange={handleOTPChange}
                     onComplete={handleOTPComplete}
-                    disabled={isLoadingVerify}
+                    disabled={verifyEmailMutation.isPending}
                     className="my-8"
                   />
                 </FormControl>
@@ -207,15 +167,15 @@ export default function VerifyOTP() {
             <button
               type="button"
               onClick={handleResend}
-              disabled={!canResend || isLoadingResend || !email}
+              disabled={!canResend || resendVerificationMutation.isPending || !email}
               className={cn(
                 "font-medium transition-colors",
-                canResend && !isLoadingResend && email
+                canResend && !resendVerificationMutation.isPending && email
                   ? "text-[#38BDF8] hover:text-[#2abdfc] cursor-pointer"
                   : "text-gray-400 cursor-not-allowed"
               )}
             >
-              {isLoadingResend ? 'Sending...' : canResend ? 'Resend' : `Resend in ${countdown}s`}
+              {resendVerificationMutation.isPending ? 'Sending...' : canResend ? 'Resend' : `Resend in ${countdown}s`}
             </button>
           </div>
 
@@ -223,8 +183,8 @@ export default function VerifyOTP() {
           <CustomButton
             type="submit"
             className="w-full text-white font-medium py-3 text-base rounded-sm transition-colors"
-            disabled={isLoadingVerify || otpValue.length !== 6}
-            loading={isLoadingVerify}
+            disabled={verifyEmailMutation.isPending || otpValue.length !== 6}
+            loading={verifyEmailMutation.isPending}
             loadingText="Verifying..."
           >
             Verify Email

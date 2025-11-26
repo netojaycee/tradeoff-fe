@@ -12,8 +12,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Icon } from "@iconify/react";
-import { useDispatch } from "react-redux";
-import { removeFromCart, updateQuantity } from "@/redux/slices/cartSlice";
+import { useCartStore } from "@/lib/stores";
 import { formatPrice } from "@/lib/utils";
 
 type CartItem = {
@@ -34,13 +33,14 @@ export default function CartItemCard({
   onRemove,
   onUpdateQuantity,
 }: CartItemCardProps) {
-  const dispatch = useDispatch();
+  // Use Zustand store instead of Redux
+  const { removeFromCart, updateQuantity } = useCartStore();
 
   const handleRemove = (id: string) => {
     if (onRemove) {
       onRemove(id);
     } else {
-      dispatch(removeFromCart(id));
+      removeFromCart(id);
     }
   };
 
@@ -48,7 +48,7 @@ export default function CartItemCard({
     if (onUpdateQuantity) {
       onUpdateQuantity(id, quantity);
     } else {
-      dispatch(updateQuantity({ id, quantity }));
+      updateQuantity(id, quantity);
     }
   };
 

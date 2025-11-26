@@ -24,7 +24,7 @@ const authRoutes = [
 ];
 
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
     const { pathname } = request.nextUrl;
 
     // Get access token from cookies (which we now properly set)

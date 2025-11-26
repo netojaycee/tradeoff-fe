@@ -1,9 +1,7 @@
 // components/cart/CartPage.tsx
 "use client";
 
-import { useSelector, useDispatch } from "react-redux";
-import { RootState } from "@/redux/store";
-import { removeFromCart, updateQuantity } from "@/redux/slices/cartSlice";
+import { useCartStore } from "@/lib/stores";
 import { Lock, ShoppingBag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,8 +12,7 @@ import { formatPrice } from "@/lib/utils";
 import { CustomButton, CustomInput } from "@/components/local";
 
 export default function CartPage() {
-  const dispatch = useDispatch();
-  const cartItems = useSelector((state: RootState) => state.cart.items);
+  const { items: cartItems, removeFromCart, updateQuantity } = useCartStore();
 
   const subtotal = cartItems.reduce(
     (sum, item) => sum + item.price * item.quantity,
@@ -24,11 +21,11 @@ export default function CartPage() {
   const itemCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
 
   const handleRemove = (id: string) => {
-    dispatch(removeFromCart(id));
+    removeFromCart(id);
   };
 
   const handleUpdateQuantity = (id: string, quantity: number) => {
-    dispatch(updateQuantity({ id, quantity }));
+    updateQuantity( id, quantity );
   };
 
   if (cartItems.length === 0) {

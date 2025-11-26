@@ -6,7 +6,7 @@ import { Icon } from "@iconify/react";
 import { CustomInput } from "../custom/CustomInput";
 import { CustomButton } from "../custom/CustomButton";
 import { Logo } from "./Logo";
-import { useGetCategoriesQuery } from "@/redux/api";
+import { useGetCategoriesQuery } from "@/lib/api";
 import { Category } from "@/lib/types";
 
 interface NavigationItem {
@@ -29,7 +29,7 @@ interface HeaderAction {
 const Header: React.FC = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  // Fetch categories from RTK Query
+  // Fetch categories using TanStack Query
   const { data: categoriesData } = useGetCategoriesQuery();
   const allCategories = categoriesData?.data || [];
   
@@ -40,15 +40,8 @@ const Header: React.FC = () => {
     hasDropdown: true,
   }));
 
-  const [open, setOpen] = useState(false);
 
-  const product = {
-    name: "LV Remix Boat Shoe",
-    description:
-      "A sleek, easy-to-style boat shoe that blends classic design with everyday comfort and street-ready flair.",
-    price: 24000,
-    image: "/shoe.png",
-  };
+
   // Header action items
   const headerActions: HeaderAction[] = [
     {
@@ -91,7 +84,7 @@ const Header: React.FC = () => {
       {/* Mobile Header */}
       <div className="md:hidden flex items-center justify-between px-4 py-3 ">
         {/* Logo */}
-        <Logo variant="dark" />
+        <Logo variant="dark" priority={true} />
 
         {/* Mobile Actions */}
         <div className="flex items-center space-x-3">
@@ -135,7 +128,7 @@ const Header: React.FC = () => {
         {/* Main Header */}
         <div className="flex items-center justify-between px-16 py-4">
           {/* Logo */}
-          <Logo variant="dark" />
+          <Logo variant="dark" priority={true} />
 
           {/* Search Bar */}
           <div className="flex-1 max-w-2xl mx-8">

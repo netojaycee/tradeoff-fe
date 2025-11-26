@@ -1,10 +1,10 @@
 "use client";
 
-import React from "react";
+import React, { useMemo } from "react";
 import { ProductCard } from "@/components/local/ecom";
 import { Product } from "@/lib/types";
 import { Icon } from "@iconify/react";
-import { useGetProductsQuery } from "@/redux/api";
+import { useGetProductsQuery } from "@/lib/api";
 
 interface ProductsGridProps {
   title?: string;
@@ -12,6 +12,7 @@ interface ProductsGridProps {
   limit?: number;
   category?: string;
   productSlug?: string;
+  initialProducts?: Product[];
 }
 
 export default function ProductsGrid({
@@ -20,22 +21,29 @@ export default function ProductsGrid({
   limit = 8,
   category = "",
   productSlug = "",
+  initialProducts = [],
 }: ProductsGridProps) {
-  // Fetch products using RTK Query
+  // Use server-fetched initial products first, then optionally refetch if category changes
   const {
     data: productsData,
     isLoading,
     error,
-  } = useGetProductsQuery({
-    page: 1,
-    limit: limit,
-    category: category,
-  });
+  } = useGetProductsQuery(
+    {
+      page: 1,
+      limit: limit,
+      category: category,
+    },
+    { enabled: category !== "" }
+  );
 
-  // Extract products from response - handle both array and object responses
-  const productList = Array.isArray(productsData?.data)
-    ? productsData?.data
-    : [];
+  // Use initial server products if no category, otherwise use fetched data
+  const productList = useMemo(() => {
+    if (category && productsData?.data) {
+      return Array.isArray(productsData.data) ? productsData.data : [];
+    }
+    return initialProducts || [];
+  }, [category, productsData, initialProducts]);
 
   // Filter out current product if productSlug is provided
   const filteredProductList = productSlug
@@ -44,13 +52,14 @@ export default function ProductsGrid({
 
   const hasError = !!error;
 
-  // Create skeleton array while loading (8 items)
-  const displayItems = isLoading
-    ? Array.from({ length: limit }).map(() => null)
-    : filteredProductList;
+  // Create skeleton array while loading (only show skeletons while actually loading data)
+  const displayItems =
+    isLoading && category !== "" || (category === "" && initialProducts.length === 0)
+      ? Array.from({ length: limit }).map(() => null)
+      : filteredProductList;
 
   // Show error state
-  if (hasError && !isLoading) {
+  if (hasError && !isLoading && category) {
     return (
       <section className={className}>
         {title && (
@@ -142,7 +151,11 @@ export default function ProductsGrid({
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {displayItems.map((product: Product | null, index: number) => (
           <ProductCard
-            key={isLoading ? `skeleton-${index}` : product?.id || product?._id}
+            key={
+              isLoading && category !== ""
+                ? `skeleton-${index}`
+                : product?.id || product?._id
+            }
             product={product || undefined}
             isLoading={product === null}
           />

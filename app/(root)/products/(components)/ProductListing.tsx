@@ -6,7 +6,7 @@ import ProductPagination from "./ProductPagination";
 import { Product } from "@/lib/types";
 import { ProductCard } from "@/components/local/ecom";
 import { Icon } from "@iconify/react";
-import { useGetProductsQuery, useGetCategoriesQuery } from "@/redux/api";
+import { useGetProductsQuery, useGetCategoriesQuery } from "@/lib/api";
 
 type ProductListingProps = {
   enablePagination?: boolean;
@@ -47,11 +47,6 @@ export default function ProductListing({
   const products = productsData?.data || [];
   const totalItems = productsData?.meta?.total || 0;
   const totalPages = Math.ceil(totalItems / itemsPerPage);
-
-  // Console log for debugging
-  console.log("Products data:", productsData);
-  console.log("Categories:", categoriesData);
-  console.log("Current filters:", filters);
 
   const handleFilterChange = (newFilters: Filters) => {
     setFilters(newFilters);

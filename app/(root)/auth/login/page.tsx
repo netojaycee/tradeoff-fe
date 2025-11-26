@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useEffect } from "react";
+import React from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useLoginMutation } from "@/redux/api";
+import { useLoginMutation } from "@/lib/api";
 import { CustomButton, CustomInput, AuthLayout } from "@/components/local";
 import {
   Form,
@@ -33,8 +33,8 @@ export default function Login() {
   // Redirect to dashboard if already authenticated
   const { isLoading: authLoading } = useRedirectIfAuthenticated("/dashboard");
 
-  const [login, { isLoading: isLoadingLogin, isSuccess: isSuccessLogin }] =
-    useLoginMutation();
+  // Use TanStack Query mutation
+  const loginMutation = useLoginMutation();
 
   const form = useForm<LoginCredentials>({
     resolver: zodResolver(loginSchema),
@@ -54,16 +54,15 @@ export default function Login() {
       //   localStorage.removeItem('savedEmail');
       // }
 
-      const result = await login(values).unwrap();
+      // Use TanStack Query mutation
+      const result = await loginMutation.mutateAsync(values);
 
-      if (result.success) {
+      if (result) {
         toast.success("Login successful!");
         // Get redirect URL from query params or default to dashboard
         const searchParams = new URLSearchParams(window.location.search);
         const redirectTo = searchParams.get("redirect") || "/dashboard";
         router.push(redirectTo);
-      } else {
-        toast.error(result.message || "Login failed. Please try again.");
       }
     } catch (error: unknown) {
       console.error("Login error:", error);
@@ -104,12 +103,6 @@ export default function Login() {
     }
   };
 
-  useEffect(() => {
-    if (isSuccessLogin) {
-      toast.success("Login Successful");
-    }
-  }, [isSuccessLogin]);
-
   // Load saved email on component mount if keep signed in is enabled - Commented out for now
   // useEffect(() => {
   //   if (typeof window !== 'undefined') {
@@ -124,7 +117,6 @@ export default function Login() {
 
   const handleGoogleSignIn = () => {
     // Handle Google sign in logic here
-    console.log("Google sign in");
     toast.info("Google sign in coming soon!");
   };
 
@@ -224,8 +216,8 @@ export default function Login() {
           <CustomButton
             type="submit"
             className="w-full text-white font-medium py-3 text-base rounded-sm transition-colors"
-            disabled={isLoadingLogin}
-            loading={isLoadingLogin}
+            disabled={loginMutation.isPending}
+            loading={loginMutation.isPending}
             loadingText="Signing in..."
           >
             Start Shopping

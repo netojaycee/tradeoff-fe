@@ -18,7 +18,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { PasswordStrength } from "@/components/local/general/PasswordStrength";
-import { useResetPasswordMutation } from "@/redux/api";
+import { useResetPasswordMutation } from "@/lib/api";
 import {
   resetPasswordSchema,
   type ResetPasswordCredentials,
@@ -30,15 +30,7 @@ export default function ResetPasswordPage() {
   // const email = searchParams.get("email") || ""
   const tempPassword = searchParams.get("code") || "";
 
-  const [
-    resetPassword,
-    {
-      isLoading: isLoadingResetPassword,
-      isSuccess: isSuccessResetPassword,
-      isError: isErrorResetPassword,
-      error: errorResetPassword,
-    },
-  ] = useResetPasswordMutation();
+  const resetPasswordMutation = useResetPasswordMutation();
 
   const form = useForm<ResetPasswordCredentials>({
     resolver: zodResolver(resetPasswordSchema),
@@ -60,38 +52,32 @@ export default function ResetPasswordPage() {
 
   const onSubmit = async (values: ResetPasswordCredentials) => {
     try {
-      await resetPassword({
+      await resetPasswordMutation.mutateAsync({
         newPassword: values.newPassword,
+        confirmPassword: values.confirmPassword,
         code: values.code,
-      }).unwrap();
+      });
     } catch (error) {
       console.error("Reset password error:", error);
     }
   };
 
   useEffect(() => {
-    if (isSuccessResetPassword) {
+    if (resetPasswordMutation.isSuccess) {
       toast.success("Password reset successfully!");
       // Navigate to login page
       setTimeout(() => {
         router.push("/auth/login");
       }, 1500);
-    } else if (isErrorResetPassword) {
-      if (
-        "data" in errorResetPassword &&
-        typeof errorResetPassword.data === "object"
-      ) {
-        const errorMessage = (errorResetPassword.data as { error?: string })
-          ?.error;
-        toast.error(errorMessage || "Failed to reset password");
-      } else {
-        toast.error("Failed to reset password");
-      }
+    } else if (resetPasswordMutation.isError) {
+      const error = resetPasswordMutation.error as any
+      const errorMessage = error?.message || 'Failed to reset password'
+      toast.error(errorMessage)
     }
   }, [
-    isSuccessResetPassword,
-    isErrorResetPassword,
-    errorResetPassword,
+    resetPasswordMutation.isSuccess,
+    resetPasswordMutation.isError,
+    resetPasswordMutation.error,
     router,
   ]);
 
@@ -189,8 +175,8 @@ export default function ResetPasswordPage() {
           <CustomButton
             type="submit"
             className="w-full text-white font-medium py-3 text-base rounded-sm transition-colors"
-            disabled={isLoadingResetPassword}
-            loading={isLoadingResetPassword}
+            disabled={resetPasswordMutation.isPending}
+            loading={resetPasswordMutation.isPending}
             loadingText="Updating Password..."
           >
             Update Password

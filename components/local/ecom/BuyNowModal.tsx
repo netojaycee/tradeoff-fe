@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useDispatch } from "react-redux";
+import { useCartStore } from "@/lib/stores";
 import {
   Select,
   SelectContent,
@@ -13,7 +13,6 @@ import {
 } from "@/components/ui/select";
 import { formatPrice } from "@/lib/utils";
 import { CustomButton } from "@/components/local";
-import { addToCart } from "@/redux/slices/cartSlice";
 import { Product } from "@/lib/types";
 
 interface BuyNowModalProps {
@@ -22,7 +21,8 @@ interface BuyNowModalProps {
 }
 
 export default function BuyNowModal({ product, onClose }: BuyNowModalProps) {
-  const dispatch = useDispatch();
+  // Use Zustand store instead of Redux
+  const { addToCart } = useCartStore();
   const router = useRouter();
   const [quantity, setQuantity] = useState(1);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -36,15 +36,13 @@ export default function BuyNowModal({ product, onClose }: BuyNowModalProps) {
     setIsProcessing(true);
 
     // Add to cart with selected quantity
-    dispatch(
-      addToCart({
-        id: productId,
-        name: productTitle,
-        price: productPrice,
-        image: product.images[0],
-        quantity: quantity,
-      })
-    );
+    addToCart({
+      id: productId,
+      name: productTitle,
+      price: productPrice,
+      image: product.images[0],
+      quantity: quantity,
+    });
 
     // Small delay to ensure cart is updated, then redirect
     setTimeout(() => {

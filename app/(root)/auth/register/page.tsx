@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useRegisterMutation } from '@/redux/api'
+import { useRegisterMutation } from '@/lib/api'
 import { CustomButton, CustomInput, AuthLayout, PasswordStrength } from '@/components/local'
 import {
   Form,
@@ -35,14 +35,8 @@ export default function Register() {
   // Redirect to dashboard if already authenticated
   const { isLoading: authLoading } = useRedirectIfAuthenticated('/dashboard')
   
-  const [
-    register,
-    {
-      isLoading: isLoadingRegister,
-      isError: isErrorRegister,
-      error: errorRegister,
-    },
-  ] = useRegisterMutation()
+  // Use TanStack Query mutation
+  const registerMutation = useRegisterMutation()
 
   const form = useForm<RegisterFormData>({
     resolver: zodResolver(registerFormSchema),
@@ -67,16 +61,14 @@ export default function Register() {
         phoneNumber: values.phoneNumber,
       }
       
-      const result = await register(apiData).unwrap()
+      // Use TanStack Query mutation
+      const result = await registerMutation.mutateAsync(apiData)
       
-      if (result.success) {
-        toast.success('Registration successful! Please check your email for verification code.')
-        // Store email in localStorage for verification page
-        localStorage.setItem('verificationEmail', values.email)
-        router.push('/auth/verify-otp')
-      } else {
-        toast.error(result.message || 'Registration failed. Please try again.')
-      }
+      // If we get here, the mutation was successful
+      toast.success('Registration successful! Please check your email for verification code.')
+      // Store email in localStorage for verification page
+      localStorage.setItem('verificationEmail', values.email)
+      router.push('/auth/verify-otp')
     } catch (error: unknown) {
       console.error('Register error:', error)
       
@@ -89,23 +81,6 @@ export default function Register() {
     }
   }
 
-  useEffect(() => {
-    if (isErrorRegister) {
-      if ('data' in errorRegister && typeof errorRegister.data === 'object') {
-        const errorMessage = (errorRegister.data as { message?: string })?.message
-        toast.error(errorMessage || 'Registration failed')
-      } else {
-        toast.error('Registration failed')
-      }
-    }
-  }, [isErrorRegister, errorRegister])
-
-  const handleGoogleSignUp = () => {
-    // Handle Google sign up logic here
-    console.log('Google sign up')
-    toast.info('Google sign up coming soon!')
-  }
-
   // Show loading state while checking auth
   if (authLoading) {
     return (
@@ -113,6 +88,11 @@ export default function Register() {
         <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
       </div>
     )
+  }
+
+  const handleGoogleSignUp = () => {
+    // Handle Google sign up logic here
+    toast.info('Google sign up coming soon!')
   }
 
   return (
@@ -273,8 +253,8 @@ export default function Register() {
           <CustomButton
             type="submit"
             className="w-full text-white font-medium py-3 text-base rounded-sm transition-colors"
-            disabled={isLoadingRegister}
-            loading={isLoadingRegister}
+            disabled={registerMutation.isPending}
+            loading={registerMutation.isPending}
             loadingText="Creating account..."
           >
             Let&apos;s Go
@@ -309,7 +289,6 @@ export default function Register() {
           className="text-[#38BDF8] hover:text-[#2abdfc] underline"
           onClick={() => {
             // Handle terms navigation
-            console.log('Navigate to terms')
           }}
         >
           Terms & Privacy Policy

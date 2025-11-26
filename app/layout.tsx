@@ -1,8 +1,11 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import ReduxProvider from "@/lib/providers/ReduxProvider";
+import { QueryProvider } from "@/lib/providers/QueryProvider";
 import { Toaster } from "sonner";
 import { defaultMetadata } from "@/lib/seo/metadata";
+import { ServiceWorkerProvider } from "@/components/providers/ServiceWorkerProvider";
+import { WebVitalsProvider } from "@/components/providers/WebVitalsProvider";
+import { interFont, playfairFont } from "@/lib/fonts";
 
 export const metadata: Metadata = defaultMetadata;
 
@@ -12,7 +15,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en-NG">
+    <html lang="en-NG" className={`${interFont.variable} ${playfairFont.variable}`}>
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -101,7 +104,9 @@ export default function RootLayout({
         />
       </head>
       <body className="font-sans antialiased">
-        <ReduxProvider>{children}</ReduxProvider>
+        <ServiceWorkerProvider />
+        <WebVitalsProvider />
+        <QueryProvider>{children}</QueryProvider>
         <Toaster richColors closeButton />
       </body>
     </html>

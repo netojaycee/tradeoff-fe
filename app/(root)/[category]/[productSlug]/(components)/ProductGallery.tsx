@@ -67,7 +67,7 @@ export function ProductGallery({
           className="w-full"
         >
           <CarouselContent>
-            {images.map((src, i) => (
+            {images && images.map((src, i) => (
               <CarouselItem key={i}>
                 <div className="relative aspect-square bg-gray-50 rounded-lg overflow-hidden">
                   <Image

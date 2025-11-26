@@ -1,7 +1,6 @@
 import { CheckoutCredentials } from "@/lib/schema";
 import { Icon } from "@iconify/react";
-import { useSelector } from "react-redux";
-import { RootState } from "@/redux/store";
+import { useCartStore } from "@/lib/stores";
 import { formatPrice } from "@/lib/utils";
 
 export default function Payment({
@@ -13,8 +12,8 @@ export default function Payment({
   isLoading?: boolean;
   handlePaymentFormSubmit: () => void;
 }) {
-  // Get cart items and calculate totals
-  const cartItems = useSelector((state: RootState) => state.cart.items);
+  // Use Zustand store for cart items
+  const { items: cartItems } = useCartStore();
   const subtotal = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const deliveryFee = cartItems.length > 0 ? 2500 : 0;
   const tax = cartItems.length > 0 ? 1000 : 0;

@@ -5,7 +5,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Icon } from "@iconify/react";
-import { useGetCategoriesQuery } from "@/redux/api";
+import { useGetCategoriesQuery } from "@/lib/api";
 
 export interface Filters {
   categories?: string[];
